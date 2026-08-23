@@ -13,6 +13,7 @@ import type { Components } from "react-markdown";
 import "katex/dist/katex.min.css";
 import remarkAlerts from "./remarkAlerts";
 import { resolveMarkdownImageSrc } from "./imageSrc";
+import { MermaidBlock, isMermaidLanguage, mermaidLanguageFromClass } from "./MermaidBlock";
 
 function CodeBlock({ children, language }: { children: React.ReactNode; language?: string }) {
   const { t } = useTranslation();
@@ -227,14 +228,21 @@ const staticComponents: Components = {
   pre: ({ children }) => {
     // Extract language from the <code> element's className
     let language = "";
+    let codeText = "";
     if (
       children != null &&
       typeof children === "object" &&
       "props" in (children as React.ReactElement)
     ) {
-      const codeProps = (children as React.ReactElement<{ className?: string }>).props;
-      const match = codeProps.className?.match(/language-(\S+)/);
-      if (match) language = match[1];
+      const codeProps = (
+        children as React.ReactElement<{ className?: string; children?: React.ReactNode }>
+      ).props;
+      language = mermaidLanguageFromClass(codeProps.className) ?? "";
+      codeText = extractText(codeProps.children);
+    }
+
+    if (isMermaidLanguage(language)) {
+      return <MermaidBlock code={codeText} />;
     }
 
     return <CodeBlock language={language}>{children}</CodeBlock>;

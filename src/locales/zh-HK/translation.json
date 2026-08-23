@@ -50,6 +50,7 @@
     "imagePasteFailed": "圖片貼上失敗",
     "imageTooLarge": "圖片檔案過大（上限 20 MB）",
     "noPool": "便箋視窗池尚未初始化",
+    "noteDocDropHint": "請在主視窗開啟文件",
     "noteNotFound": "找不到該筆記",
     "unsupportedFile": "僅支援匯入 .md 檔案",
     "unsupportedImageFormat": "不支援的圖片格式",
@@ -60,6 +61,7 @@
     "copied": "已複製",
     "copy": "複製",
     "emptyHint": "預覽區會顯示目前筆記內容",
+    "mermaidError": "圖表渲染失敗，請檢查 mermaid 語法",
     "alert": {
       "note": "備註",
       "tip": "提示",

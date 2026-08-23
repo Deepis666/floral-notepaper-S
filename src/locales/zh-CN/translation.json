@@ -50,6 +50,7 @@
     "imagePasteFailed": "图片粘贴失败",
     "imageTooLarge": "图片文件过大（上限 20 MB）",
     "noPool": "便签窗口池尚未初始化",
+    "noteDocDropHint": "请在主窗口打开文档",
     "noteNotFound": "找不到该笔记",
     "unsupportedFile": "只支持导入 .md 文件",
     "unsupportedImageFormat": "不支持的图片格式",
@@ -60,6 +61,7 @@
     "copied": "已复制",
     "copy": "复制",
     "emptyHint": "预览区会显示当前笔记内容",
+    "mermaidError": "图表渲染失败，请检查 mermaid 语法",
     "alert": {
       "note": "备注",
       "tip": "提示",

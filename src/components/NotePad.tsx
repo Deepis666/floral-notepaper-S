@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { createNote, getErrorMessage, getNote, listNotes, updateNote } from "../features/notes/api";
 import { useImagePaste } from "../features/images/useImagePaste";
+import { useTauriImageDrop } from "../features/images/useTauriImageDrop";
 import { useImageBaseDir } from "../features/images/useImageBaseDir";
 import { reportInstallPreparation } from "../features/update/api";
 import type { UpdateInstallPrepareRequest } from "../features/update/types";
@@ -426,6 +427,16 @@ export function NotePad({
     onEnsureNoteSaved: ensureNoteSaved,
     onError: showToast,
     t,
+  });
+
+  useTauriImageDrop({
+    resolveNoteId: ensureNoteSaved,
+    textareaRef: contentRef,
+    setContent,
+    markDirty: () => setStatus("dirty"),
+    // 便签窗口不支持打开外部文档，提示用户回到主窗口
+    onTextFile: () => showToast(t("errors.noteDocDropHint"), "info"),
+    onError: showToast,
   });
 
   const tileNoteId = editingNoteId ?? initialNoteId ?? "";
