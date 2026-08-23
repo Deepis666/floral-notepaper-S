@@ -24,6 +24,13 @@ export default defineConfig(async () => ({
           if (id.includes("katex")) {
             return "vendor-katex";
           }
+          if (
+            /[\\/]node_modules[\\/](mermaid|d3[^\\/]*|cytoscape[^\\/]*|khroma|elkjs|dagre-d3-parser)[\\/]/.test(
+              id,
+            )
+          ) {
+            return "vendor-mermaid";
+          }
           return undefined;
         },
       },

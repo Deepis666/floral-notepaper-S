@@ -50,6 +50,7 @@
     "imagePasteFailed": "Image paste failed",
     "imageTooLarge": "Image file too large (max 20 MB)",
     "noPool": "Notepad window pool not yet initialized",
+    "noteDocDropHint": "Please open documents in the main window",
     "noteNotFound": "Note not found",
     "unsupportedFile": "Only .md files are supported",
     "unsupportedImageFormat": "Unsupported image format",
@@ -60,6 +61,7 @@
     "copied": "Copied",
     "copy": "Copy",
     "emptyHint": "Preview of the current note",
+    "mermaidError": "Diagram render failed. Please check the mermaid syntax",
     "alert": {
       "note": "Note",
       "tip": "Tip",

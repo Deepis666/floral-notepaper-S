@@ -13,6 +13,77 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/svg+xml": "svg",
 };
 
+const EXTENSION_TO_EXT: Record<string, string> = {
+  png: "png",
+  jpg: "jpg",
+  jpeg: "jpg",
+  gif: "gif",
+  webp: "webp",
+  bmp: "bmp",
+  svg: "svg",
+};
+
+export function extensionFromFileName(name: string): string | null {
+  const dotIndex = name.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === name.length - 1) return null;
+  return EXTENSION_TO_EXT[name.slice(dotIndex + 1).toLowerCase()] ?? null;
+}
+
+export interface ClipboardFileLike {
+  readonly name: string;
+  readonly type: string;
+}
+
+interface ClipboardItemLike<T extends ClipboardFileLike> {
+  readonly kind: string;
+  readonly type: string;
+  getAsFile(): T | null;
+}
+
+interface DataTransferLike<T extends ClipboardFileLike> {
+  readonly items: ArrayLike<ClipboardItemLike<T>>;
+  readonly files: ArrayLike<T>;
+}
+
+// Windows 剪贴板/拖拽场景下，图片可能只出现在 DataTransfer.files 中，
+// 或 MIME type 为空但文件名仍是 .png / .jpg 等。这里同时遍历 items 与
+// files 并允许扩展名回退，避免因检测过严而静默丢弃图片。
+export function collectImageFiles<T extends ClipboardFileLike>(
+  dataTransfer: DataTransferLike<T>,
+): T[] {
+  const picked: T[] = [];
+  const seen = new Set<T>();
+
+  const pick = (file: T | null | undefined) => {
+    if (!file || seen.has(file)) return;
+    if (file.type in MIME_TO_EXT || extensionFromFileName(file.name)) {
+      seen.add(file);
+      picked.push(file);
+    }
+  };
+
+  for (let i = 0; i < dataTransfer.items.length; i += 1) {
+    const item = dataTransfer.items[i];
+    if (item.kind === "file") pick(item.getAsFile());
+  }
+  for (let i = 0; i < dataTransfer.files.length; i += 1) {
+    pick(dataTransfer.files[i]);
+  }
+  return picked;
+}
+
+// dragover 阶段拿不到文件内容，只能凭 item 元信息乐观判断；
+// MIME 为空的文件条目也放行，真正过滤交给拖放时的 collectImageFiles。
+export function hasImageEntry(dataTransfer: DataTransferLike<ClipboardFileLike>): boolean {
+  for (let i = 0; i < dataTransfer.items.length; i += 1) {
+    const item = dataTransfer.items[i];
+    if (item.kind === "file" && (item.type in MIME_TO_EXT || item.type === "")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 interface UseImagePasteOptions {
   noteId: string | null;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -32,7 +103,7 @@ async function processImageFile(file: File, noteId: string, t?: TFunction): Prom
     );
   }
 
-  const ext = MIME_TO_EXT[file.type];
+  const ext = MIME_TO_EXT[file.type] ?? extensionFromFileName(file.name);
   if (!ext) return null;
 
   const buffer = await file.arrayBuffer();
@@ -54,15 +125,7 @@ export function insertTextAtCursor(
 }
 
 function getImageFiles(dataTransfer: DataTransfer): File[] {
-  const files: File[] = [];
-  for (let i = 0; i < dataTransfer.items.length; i++) {
-    const item = dataTransfer.items[i];
-    if (item.kind === "file" && item.type in MIME_TO_EXT) {
-      const file = item.getAsFile();
-      if (file) files.push(file);
-    }
-  }
-  return files;
+  return collectImageFiles(dataTransfer);
 }
 
 export function useImagePaste({
@@ -142,10 +205,7 @@ export function useImagePaste({
   const handleDragOver = useCallback(
     (event: React.DragEvent<HTMLTextAreaElement>) => {
       if (disabled) return;
-      const hasImage = Array.from(event.dataTransfer.items).some(
-        (item) => item.kind === "file" && item.type in MIME_TO_EXT,
-      );
-      if (hasImage) {
+      if (hasImageEntry(event.dataTransfer)) {
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
       }
