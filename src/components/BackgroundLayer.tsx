@@ -1,9 +1,22 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useMemo } from "react";
+import type { CSSProperties } from "react";
 import type { AppConfig } from "../features/settings/types";
 
 interface BackgroundLayerProps {
   config: AppConfig | null;
+}
+
+// 背景图下的内容蒙版：只盖 UI 内容区，不整体蒙灰图片；
+// 颜色取主题纸色（--color-paper），明暗主题自动适配。
+// 无背景图或强度为 0 时返回 undefined，保持无背景图时的全透明观感。
+export function contentShadeStyle(config: AppConfig | null): CSSProperties | undefined {
+  const hasBackground = (config?.backgroundImagePath ?? "").trim() !== "";
+  const shade = Math.max(0, Math.min(0.9, config?.contentShade ?? 0.35));
+  if (!hasBackground || shade <= 0) return undefined;
+  return {
+    backgroundColor: `color-mix(in srgb, var(--color-paper) ${Math.round(shade * 100)}%, transparent)`,
+  };
 }
 
 export function BackgroundLayer({ config }: BackgroundLayerProps) {

@@ -419,6 +419,7 @@
       "positionX": "橫向",
       "positionY": "縱向",
       "blur": "模糊",
+      "contentShade": "內容遮罩",
       "fit": {
         "cover": "填充",
         "contain": "完整",

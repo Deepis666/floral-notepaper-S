@@ -458,6 +458,15 @@ export function SettingsPanel({ config, onChange, onMigrateDataDir, onClose }: S
             format={(value) => `${value}px`}
             onChange={(value) => setConfigValue("backgroundBlur", value)}
           />
+          <RangeRow
+            label={t("settings.background.contentShade", { defaultValue: "内容蒙版" })}
+            value={config.contentShade ?? 0.35}
+            min={0}
+            max={0.9}
+            step={0.05}
+            format={(value) => `${Math.round(value * 100)}%`}
+            onChange={(value) => setConfigValue("contentShade", value)}
+          />
         </section>
 
         <section className="space-y-2">

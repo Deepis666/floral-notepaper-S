@@ -43,7 +43,7 @@ import type {
   UpdateInstallPrepareRequest,
   UpdateState,
 } from "../features/update/types";
-import { BackgroundLayer } from "./BackgroundLayer";
+import { BackgroundLayer, contentShadeStyle } from "./BackgroundLayer";
 import { POPUP_VIEWPORT_MARGIN, useViewportPopupPosition } from "./popupPosition";
 import { SlidingButtonGroup } from "./SlidingButtonGroup";
 import {
@@ -2115,7 +2115,11 @@ export function MainWindow({
           </div>
         </div>
 
-        <div className="relative z-10 flex flex-1 min-h-0">
+        {/* 背景图下为内容区叠加可调蒙版，保证正文/工具栏可读（无背景图时返回 undefined） */}
+        <div
+          className="relative z-10 flex flex-1 min-h-0"
+          style={contentShadeStyle(settingsConfig)}
+        >
           <div
             className="border-r border-paper-deep/30 bg-paper/40 shrink-0 overflow-hidden transition-[width] duration-[600ms]"
             style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
