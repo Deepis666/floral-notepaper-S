@@ -60,6 +60,8 @@ pub struct AppConfig {
     pub background_dim: f64,
     #[serde(default = "default_background_blur")]
     pub background_blur: f64,
+    #[serde(default = "default_content_shade")]
+    pub content_shade: f64,
     #[serde(default = "default_background_scale")]
     pub background_scale: f64,
     #[serde(default = "default_background_position")]
@@ -262,6 +264,50 @@ fn default_data_dir() -> Result<PathBuf, AppError> {
     Ok(env::current_dir()?.join("data"))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialConfig {
+    data_dir: Option<String>,
+    notes_dir: Option<String>,
+}
+
+fn data_dir_from_partial(partial: &PartialConfig) -> Option<PathBuf> {
+    if let Some(ref data_dir) = partial.data_dir {
+        return Some(PathBuf::from(data_dir));
+    }
+    if let Some(ref notes_dir) = partial.notes_dir {
+        return Some(data_dir_from_notes_dir(notes_dir));
+    }
+    None
+}
+
+fn data_dir_recorded_in_config(config_path: &Path) -> Option<PathBuf> {
+    if !config_path.exists() {
+        return None;
+    }
+    let content = fs::read_to_string(config_path).ok()?;
+    let partial = serde_json::from_str::<PartialConfig>(&content).ok()?;
+    data_dir_from_partial(&partial)
+}
+
+// 记录的数据目录可能已被删除或移动（卸载残留、手动搬走文件夹、盘符失效等）。
+// 继续使用的后果：无权限位置会在建目录时崩溃；可创建位置会伪造空库掩盖真实数据。
+// 因此不存在时优先回退到仍有数据的旧位置，找不到则回到默认目录，
+// load_config 随后会把新位置写回 config 完成自愈。
+// FLORAL_NOTEPAPER_DATA_DIR 不走此逻辑——它是显式改向指令，目录不存在时
+// 由 migrate_data_dir_if_relocated 负责把旧数据搬过去。
+fn recover_missing_data_dir(recorded: PathBuf, candidates: &[PathBuf]) -> PathBuf {
+    eprintln!(
+        "configured data dir {} no longer exists, falling back",
+        recorded.display()
+    );
+    candidates
+        .iter()
+        .find(|dir| dir.join("metadata.json").exists())
+        .cloned()
+        .unwrap_or_else(|| default_data_dir().unwrap_or(recorded))
+}
+
 fn resolve_data_dir(config_dir: &Path) -> Result<PathBuf, AppError> {
     if let Ok(path) = env::var("FLORAL_NOTEPAPER_DATA_DIR") {
         let trimmed = path.trim();
@@ -270,32 +316,15 @@ fn resolve_data_dir(config_dir: &Path) -> Result<PathBuf, AppError> {
         }
     }
 
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct PartialConfig {
-        data_dir: Option<String>,
-        notes_dir: Option<String>,
-    }
-
-    fn data_dir_from_partial(partial: &PartialConfig) -> Option<PathBuf> {
-        if let Some(ref data_dir) = partial.data_dir {
-            return Some(PathBuf::from(data_dir));
-        }
-        if let Some(ref notes_dir) = partial.notes_dir {
-            return Some(data_dir_from_notes_dir(notes_dir));
-        }
-        None
-    }
-
     let config_path = config_dir.join("config.json");
-    if config_path.exists() {
-        if let Ok(content) = fs::read_to_string(&config_path) {
-            if let Ok(partial) = serde_json::from_str::<PartialConfig>(&content) {
-                if let Some(dir) = data_dir_from_partial(&partial) {
-                    return Ok(dir);
-                }
-            }
+    if let Some(dir) = data_dir_recorded_in_config(&config_path) {
+        if dir.exists() {
+            return Ok(dir);
         }
+        return Ok(recover_missing_data_dir(
+            dir,
+            &known_data_migration_candidates(),
+        ));
     }
 
     for old_dir in known_data_migration_candidates() {
@@ -303,12 +332,15 @@ fn resolve_data_dir(config_dir: &Path) -> Result<PathBuf, AppError> {
         if !old_config.exists() {
             continue;
         }
-        if let Ok(content) = fs::read_to_string(&old_config) {
-            if let Ok(partial) = serde_json::from_str::<PartialConfig>(&content) {
-                if let Some(dir) = data_dir_from_partial(&partial) {
-                    return Ok(dir);
-                }
+        if let Some(dir) = data_dir_recorded_in_config(&old_config) {
+            // 旧配置指向的位置同样可能已失效，按同一规则回退
+            if dir.exists() {
+                return Ok(dir);
             }
+            return Ok(recover_missing_data_dir(
+                dir,
+                &known_data_migration_candidates(),
+            ));
         }
         return Ok(old_dir);
     }
@@ -723,7 +755,14 @@ impl NoteStore {
         config.data_dir = Some(self.data_dir.to_string_lossy().to_string());
         config.tab_indent_size = config.tab_indent_size.clamp(1, 8);
         write_json_atomic(&path, &config)?;
-        fs::create_dir_all(self.data_dir.join("notes"))?;
+        // 数据目录建不出来（无权限、盘符失效）不阻断启动，否则整个应用直接崩溃；
+        // 应用起来后用户仍可在设置里迁移数据目录自救
+        if let Err(error) = fs::create_dir_all(self.data_dir.join("notes")) {
+            eprintln!(
+                "failed to create data dir {}: {error}",
+                self.data_dir.display()
+            );
+        }
         if self.migrate_macos_shortcut_default(&mut config)? {
             write_json_atomic(&path, &config)?;
         }
@@ -1153,6 +1192,7 @@ impl NoteStore {
             background_fit: default_background_fit(),
             background_dim: default_background_dim(),
             background_blur: default_background_blur(),
+            content_shade: default_content_shade(),
             background_scale: default_background_scale(),
             background_position_x: default_background_position(),
             background_position_y: default_background_position(),
@@ -1726,6 +1766,12 @@ fn default_background_blur() -> f64 {
     0.0
 }
 
+// 背景图下的内容蒙版默认强度：保证正文可读，又不至于完全盖住图片；
+// 设为 0 则恢复无背景图时的全透明观感
+fn default_content_shade() -> f64 {
+    0.35
+}
+
 fn default_background_scale() -> f64 {
     1.0
 }
@@ -1896,6 +1942,7 @@ mod tests {
         assert!(!default_config.tile_save_returns_to_pin);
         assert_eq!(default_config.theme, "system");
         assert_eq!(default_config.locale, "zh-CN");
+        assert_eq!(default_config.content_shade, 0.35);
         assert_eq!(
             default_config.data_dir.as_deref(),
             Some(store.data_dir().to_string_lossy().as_ref())
@@ -1921,6 +1968,7 @@ mod tests {
             background_fit: "cover".into(),
             background_dim: 0.25,
             background_blur: 0.0,
+            content_shade: 0.35,
             background_scale: 1.0,
             background_position_x: 50.0,
             background_position_y: 50.0,
@@ -2190,6 +2238,46 @@ mod tests {
             config.data_dir.as_deref(),
             Some(new_data.to_string_lossy().as_ref())
         );
+    }
+
+    // 记录的数据目录已不存在：优先回退到仍含数据的旧位置，且跳过无数据的候选（避免接回空目录）
+    #[test]
+    fn recovers_missing_data_dir_to_candidate_with_data() {
+        let root = test_root("recover-missing-data-dir");
+        let gone = root.join("gone");
+        let empty_candidate = root.join("empty-candidate");
+        let data_candidate = root.join("data-candidate");
+        fs::create_dir_all(&empty_candidate).expect("create empty candidate");
+        fs::create_dir_all(&data_candidate).expect("create data candidate");
+        fs::write(data_candidate.join("metadata.json"), r#"{"notes":[]}"#).expect("seed metadata");
+
+        let recovered =
+            recover_missing_data_dir(gone, &[empty_candidate.clone(), data_candidate.clone()]);
+        assert_eq!(recovered, data_candidate);
+    }
+
+    // 所有候选都没有数据时回到默认目录，绝不继续使用已失效的记录路径
+    #[test]
+    fn recovers_missing_data_dir_to_default_when_no_candidate_has_data() {
+        let root = test_root("recover-missing-default");
+        let gone = root.join("gone");
+        let expected = default_data_dir().expect("default data dir");
+        let recovered = recover_missing_data_dir(gone.clone(), &[]);
+        assert_eq!(recovered, expected);
+    }
+
+    // 记录的数据目录仍存在时按原样使用，不触发回退（不依赖真实 HOME，确定性验证）
+    #[test]
+    fn resolve_uses_recorded_data_dir_when_it_exists() {
+        let root = test_root("resolve-recorded-exists");
+        let config_dir = root.join("config");
+        let data = root.join("data");
+        fs::create_dir_all(&config_dir).expect("create config dir");
+        fs::create_dir_all(&data).expect("create data dir");
+        let config_value = serde_json::json!({ "dataDir": data.to_string_lossy() });
+        fs::write(config_dir.join("config.json"), config_value.to_string()).expect("write config");
+
+        assert_eq!(resolve_data_dir(&config_dir).expect("resolve"), data);
     }
 
     // 新位置已有用户数据时绝不合并，保留两边，防止交叉污染

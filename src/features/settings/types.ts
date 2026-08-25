@@ -38,6 +38,7 @@ export interface AppConfig {
   backgroundFit?: BackgroundFit;
   backgroundDim?: number;
   backgroundBlur?: number;
+  contentShade?: number;
   backgroundScale?: number;
   backgroundPositionX?: number;
   backgroundPositionY?: number;

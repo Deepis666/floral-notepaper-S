@@ -441,6 +441,7 @@
       "positionX": "横向",
       "positionY": "纵向",
       "blur": "模糊",
+      "contentShade": "内容蒙版",
       "fit": {
         "cover": "填充",
         "contain": "完整",

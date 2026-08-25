@@ -441,6 +441,7 @@
       "positionX": "Horizontal",
       "positionY": "Vertical",
       "blur": "Blur",
+      "contentShade": "Content shade",
       "fit": {
         "cover": "Cover",
         "contain": "Contain",
