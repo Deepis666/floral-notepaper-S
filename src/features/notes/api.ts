@@ -119,6 +119,10 @@ function shortcutFieldLabel(field: string | undefined, translate: TFunction): st
     return translate("settings.visibilityShortcut", { defaultValue: "显示/隐藏窗口快捷键" });
   }
 
+  if (field === "openHistoryShortcut") {
+    return translate("settings.openHistoryShortcut", { defaultValue: "打开历史便签快捷键" });
+  }
+
   return null;
 }
 

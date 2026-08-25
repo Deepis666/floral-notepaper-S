@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { createNote, getErrorMessage, getNote, listNotes, updateNote } from "../features/notes/api";
+import {
+  createNote,
+  deleteNote,
+  getErrorMessage,
+  getNote,
+  listNotes,
+  updateNote,
+} from "../features/notes/api";
 import { useImagePaste } from "../features/images/useImagePaste";
 import { useTauriImageDrop } from "../features/images/useTauriImageDrop";
 import { useImageBaseDir } from "../features/images/useImageBaseDir";
@@ -25,7 +32,7 @@ import {
   startCurrentWindowResize,
 } from "../features/windows/controls";
 import type { ResizeDirection } from "../features/windows/controls";
-import { getConfig } from "../features/settings/api";
+import { getConfig, saveConfig } from "../features/settings/api";
 import {
   DEFAULT_TILE_COLOR,
   normalizeTileColor,
@@ -33,6 +40,7 @@ import {
 } from "../features/settings/tileColor";
 import type { TileColorMode } from "../features/settings/types";
 import {
+  draftPersistDecision,
   shouldEnterPadFromTileOnDoubleClick,
   shouldReturnToTileAfterManualSave,
   shouldSaveBeforeSwitchingToTile,
@@ -128,12 +136,19 @@ export function NotePad({
 }: NotePadProps) {
   const { t } = useTranslation();
   const [surfaceMode, setSurfaceMode] = useState<NoteSurfaceMode>(initialSurfaceMode);
-  const [mode, setMode] = useState<OpenMode>("new");
+  // 支持 ?tab=open 启动（历史便签快捷键）：初始直接进入打开列表
+  const [mode, setMode] = useState<OpenMode>(() =>
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("tab") === "open"
+      ? "open"
+      : "new",
+  );
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [status, setStatus] = useState<NotePadStatus>("empty");
+  const [alwaysOnTop, setAlwaysOnTop] = useState(true);
   const [noteSurfaceAutoSave, setNoteSurfaceAutoSave] = useState(initialAutoSave);
   const [tileColorRaw, setTileColorRaw] = useState(normalizeTileColor(initialTileColor));
   const [tileColorMode, setTileColorMode] = useState<TileColorMode>("system");
@@ -211,6 +226,7 @@ export function NotePad({
         const [loadedConfig] = await Promise.all([getConfig(), refreshNotes()]);
         if (!cancelled) {
           setNoteSurfaceAutoSave(loadedConfig.noteSurfaceAutoSave);
+          setAlwaysOnTop(loadedConfig.notepadAlwaysOnTop ?? true);
           setSurfaceFontSize(loadedConfig.surfaceFontSize ?? 14);
           setTileRenderMarkdown(loadedConfig.tileRenderMarkdown ?? false);
           setTileDoubleClickToEdit(loadedConfig.tileDoubleClickToEdit ?? false);
@@ -271,6 +287,7 @@ export function NotePad({
       tileRenderMarkdown?: boolean;
       tileDoubleClickToEdit?: boolean;
       tileSaveReturnsToPin?: boolean;
+      notepadAlwaysOnTop?: boolean;
     }>("config-changed", (event) => {
       const mode = event.payload.tileColorMode ?? tileColorModeRef.current;
       const raw = event.payload.tileColor ?? tileColorRawRef.current;
@@ -284,6 +301,9 @@ export function NotePad({
         setTileDoubleClickToEdit(event.payload.tileDoubleClickToEdit);
       if (event.payload.tileSaveReturnsToPin != null)
         setTileSaveReturnsToPin(event.payload.tileSaveReturnsToPin);
+      // 任一处修改置顶配置，所有便签窗口同步跟随
+      if (event.payload.notepadAlwaysOnTop != null)
+        setAlwaysOnTop(event.payload.notepadAlwaysOnTop);
     });
     return () => {
       void unlisten.then((fn) => fn());
@@ -311,8 +331,8 @@ export function NotePad({
       // not in Tauri environment (tests)
     }
 
-    const unlisten = listen<string>("notepad:activate", (event) => {
-      if (event.payload !== myLabel) return;
+    const unlisten = listen<{ label: string; tab?: string }>("notepad:activate", (event) => {
+      if (event.payload.label !== myLabel) return;
 
       isStandby.current = false;
       dormantRef.current = false;
@@ -320,7 +340,8 @@ export function NotePad({
       setEditingNoteId(null);
       setTitle("");
       setContent("");
-      setMode("new");
+      // 历史便签快捷键激活时直接展示打开列表，供选择已有笔记
+      setMode(event.payload.tab === "open" ? "open" : "new");
       setStatus("empty");
       setIsExiting(false);
       setSurfaceMode("pad");
@@ -334,7 +355,25 @@ export function NotePad({
     };
   }, [refreshNotes]);
 
-  const saveNote = useCallback(async () => {
+  const saveNote = useCallback(async (): Promise<Note | null> => {
+    const decision = draftPersistDecision(editingNoteId, title, content);
+    if (decision === "skip") {
+      // 空白便签不落库，仅重置状态，避免空文档残留
+      setStatus("empty");
+      return null;
+    }
+    if (decision === "delete" && editingNoteId) {
+      // 已绑定的笔记被清空：自动删除该记录，回到空白草稿
+      await deleteNote(editingNoteId);
+      setNotes((current) => current.filter((item) => item.id !== editingNoteId));
+      setEditingNoteId(null);
+      setTitle("");
+      setContent("");
+      setMode("new");
+      setStatus("empty");
+      return null;
+    }
+
     const existingCategory = notes.find((n) => n.id === editingNoteId)?.category ?? "";
     const request = { title, content, category: existingCategory };
     const note = editingNoteId
@@ -409,7 +448,7 @@ export function NotePad({
     if (editingNoteId) return editingNoteId;
     try {
       const note = await saveNote();
-      return note.id;
+      return note?.id ?? null;
     } catch {
       return null;
     }
@@ -454,7 +493,8 @@ export function NotePad({
         const targetBounds = getSurfaceTargetBounds(nextMode, currentBounds);
 
         if (nextMode === "tile") {
-          await setCurrentWindowAlwaysOnTop(true);
+          // 置顶状态由配置决定，不再强制置顶
+          await setCurrentWindowAlwaysOnTop(alwaysOnTop);
         }
 
         await animateCurrentWindowBounds(targetBounds);
@@ -462,7 +502,7 @@ export function NotePad({
         showToast(getErrorMessage(error));
       }
     },
-    [surfaceMode, tileNoteId],
+    [alwaysOnTop, surfaceMode, tileNoteId],
   );
 
   useEffect(() => {
@@ -480,14 +520,38 @@ export function NotePad({
 
   useEffect(() => {
     if (surfaceMode !== "tile") return;
-    void setCurrentWindowAlwaysOnTop(true).catch(() => undefined);
-  }, [surfaceMode]);
+    void setCurrentWindowAlwaysOnTop(alwaysOnTop).catch(() => undefined);
+  }, [surfaceMode, alwaysOnTop]);
+
+  // 置顶状态变化（设置面板/其他窗口/本窗口按钮）时对当前窗口立即生效；
+  // 测试环境无 Tauri 窗口，失败时静默降级
+  useEffect(() => {
+    try {
+      void setCurrentWindowAlwaysOnTop(alwaysOnTop).catch(() => undefined);
+    } catch {
+      // not in Tauri environment (tests)
+    }
+  }, [alwaysOnTop]);
+
+  const toggleAlwaysOnTop = useCallback(async () => {
+    const next = !alwaysOnTop;
+    setAlwaysOnTop(next);
+    try {
+      await setCurrentWindowAlwaysOnTop(next);
+      // 持久化后触发 config-changed，其余便签窗口同步跟随
+      const current = await getConfig();
+      await saveConfig({ ...current, notepadAlwaysOnTop: next });
+    } catch (error) {
+      showToast(getErrorMessage(error));
+    }
+  }, [alwaysOnTop]);
 
   const handleSave = useCallback(
     async ({ isAutoSave = false }: { isAutoSave?: boolean } = {}) => {
       try {
         const savedNote = await saveNote();
         if (
+          savedNote &&
           shouldReturnToTileAfterManualSave({
             enabled: tileSaveReturnsToPin,
             noteId: savedNote.id,
@@ -594,6 +658,11 @@ export function NotePad({
 
   const handlePin = async () => {
     try {
+      // 空白便签没有可钉住的内容，拒绝落库并提示用户
+      if (draftPersistDecision(editingNoteId, title, content) !== "save") {
+        showToast(t("errors.emptyNoteCannotPin"), "info");
+        return;
+      }
       if (shouldSaveBeforeSwitchingToTile(noteSurfaceAutoSave) || !editingNoteId) {
         await saveNote();
       }
@@ -804,6 +873,35 @@ export function NotePad({
               </div>
 
               <div className="ml-auto flex items-center gap-1.5">
+                <button
+                  onClick={() => void toggleAlwaysOnTop()}
+                  className={`group w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-200 cursor-pointer ${
+                    alwaysOnTop
+                      ? "text-bamboo hover:text-bamboo-light hover:bg-bamboo-mist/50"
+                      : "text-ink-ghost hover:text-ink-faint hover:bg-paper-warm"
+                  }`}
+                  title={
+                    alwaysOnTop
+                      ? t("notepad.tooltip.alwaysOnTop", { defaultValue: "置顶" })
+                      : t("notepad.tooltip.notAlwaysOnTop", { defaultValue: "取消置顶" })
+                  }
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 4h14" />
+                    <path d="M12 20V9" />
+                    <path d="M7 13l5-5 5 5" />
+                  </svg>
+                </button>
+
                 <button
                   onClick={() => void handlePin()}
                   className="group w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-200 cursor-pointer text-ink-ghost hover:text-ink-faint hover:bg-paper-warm"

@@ -483,6 +483,7 @@ pub struct RuntimeConfigChanges {
     pub autostart_changed: bool,
     pub global_shortcut_changed: bool,
     pub toggle_visibility_shortcut_changed: bool,
+    pub open_history_shortcut_changed: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -556,6 +557,7 @@ struct RuntimeState {
 struct ShortcutBindings {
     open_notepad: Option<Shortcut>,
     toggle_visibility: Option<Shortcut>,
+    open_history: Option<Shortcut>,
 }
 
 #[cfg(desktop)]
@@ -563,6 +565,7 @@ struct ShortcutBindings {
 enum ShortcutAction {
     OpenNotepad,
     ToggleVisibility,
+    OpenNoteHistory,
 }
 
 #[derive(Default)]
@@ -661,6 +664,8 @@ impl ShortcutBindings {
             .is_some_and(|s| s == shortcut)
         {
             Some(ShortcutAction::ToggleVisibility)
+        } else if self.open_history.as_ref().is_some_and(|s| s == shortcut) {
+            Some(ShortcutAction::OpenNoteHistory)
         } else if self.open_notepad.as_ref().is_some_and(|s| s == shortcut) {
             Some(ShortcutAction::OpenNotepad)
         } else {
@@ -1004,6 +1009,7 @@ pub fn runtime_config_changes(previous: &AppConfig, next: &AppConfig) -> Runtime
         global_shortcut_changed: previous.global_shortcut != next.global_shortcut,
         toggle_visibility_shortcut_changed: previous.toggle_visibility_shortcut
             != next.toggle_visibility_shortcut,
+        open_history_shortcut_changed: previous.open_history_shortcut != next.open_history_shortcut,
     }
 }
 
@@ -1075,7 +1081,10 @@ pub fn apply_runtime_config(
 ) -> Result<(), Box<dyn Error>> {
     let changes = runtime_config_changes(previous, next);
 
-    if changes.global_shortcut_changed || changes.toggle_visibility_shortcut_changed {
+    if changes.global_shortcut_changed
+        || changes.toggle_visibility_shortcut_changed
+        || changes.open_history_shortcut_changed
+    {
         apply_global_shortcut_config(app, next)?;
     }
 
@@ -1430,8 +1439,17 @@ fn open_notepad_window_now(
     note_id: Option<&str>,
     bounds: Option<WindowBounds>,
 ) -> Result<String, AppError> {
+    open_notepad_window_with_tab(app, note_id, bounds, None)
+}
+
+fn open_notepad_window_with_tab(
+    app: &AppHandle,
+    note_id: Option<&str>,
+    bounds: Option<WindowBounds>,
+    tab: Option<&str>,
+) -> Result<String, AppError> {
     if note_id.is_none() {
-        if let Some(reused) = activate_pooled_notepad(app, bounds) {
+        if let Some(reused) = activate_pooled_notepad(app, bounds, tab) {
             clear_hidden_window_state(app);
             return Ok(reused);
         }
@@ -1442,7 +1460,10 @@ fn open_notepad_window_now(
     let specs = saved_surface_specs(app);
     let url = match note_id {
         Some(id) => format!("index.html?view=notepad&noteId={id}"),
-        None => "index.html?view=notepad".to_string(),
+        None => match tab {
+            Some(tab) => format!("index.html?view=notepad&tab={tab}"),
+            None => "index.html?view=notepad".to_string(),
+        },
     };
 
     open_or_focus_window(
@@ -1453,7 +1474,8 @@ fn open_notepad_window_now(
             title: locales::notepad_window_title(locale).to_string(),
             specs,
             decorations: false,
-            always_on_top: true,
+            // 置顶状态由配置决定；读取失败时保持历史行为（置顶）
+            always_on_top: configured_notepad_always_on_top(),
             shadow: false,
             skip_taskbar: true,
             bounds,
@@ -1494,7 +1516,19 @@ fn set_webview_memory_usage_level(window: &tauri::WebviewWindow, low: bool) {
 #[cfg(not(target_os = "windows"))]
 fn set_webview_memory_usage_level(_window: &tauri::WebviewWindow, _low: bool) {}
 
-fn activate_pooled_notepad(app: &AppHandle, bounds: Option<WindowBounds>) -> Option<String> {
+// 激活事件 payload：label 标识目标窗口，tab 可选（"open" 表示直接展示历史列表）
+#[derive(serde::Serialize, Clone)]
+struct NotepadActivatePayload {
+    label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tab: Option<String>,
+}
+
+fn activate_pooled_notepad(
+    app: &AppHandle,
+    bounds: Option<WindowBounds>,
+    tab: Option<&str>,
+) -> Option<String> {
     let pool = app.try_state::<NotepadPool>()?;
     let label = pool.take()?;
     let window = app.get_webview_window(&label)?;
@@ -1504,10 +1538,18 @@ fn activate_pooled_notepad(app: &AppHandle, bounds: Option<WindowBounds>) -> Opt
     let specs = saved_surface_specs(app);
     let _ = window.set_title(locales::notepad_window_title(locale));
     let _ = window.set_size(tauri::LogicalSize::new(specs.width, specs.height));
+    // 取出池窗口时按当前配置应用置顶状态（预热时置顶仅影响隐藏窗口）
+    let _ = window.set_always_on_top(configured_notepad_always_on_top());
     let _ = apply_window_bounds(&window, bounds);
     let _ = window.show();
     let _ = window.set_focus();
-    let _ = window.emit("notepad:activate", label.clone());
+    let _ = window.emit(
+        "notepad:activate",
+        NotepadActivatePayload {
+            label: label.clone(),
+            tab: tab.map(str::to_string),
+        },
+    );
 
     schedule_notepad_replenish(app, 100);
 
@@ -1787,7 +1829,8 @@ fn open_tile_window_now(
             title: locales::tile_window_title(locale).to_string(),
             specs,
             decorations: false,
-            always_on_top: true,
+            // 磁贴模式同样尊重置顶配置（游戏全屏时不再遮挡）
+            always_on_top: configured_notepad_always_on_top(),
             shadow: false,
             skip_taskbar: true,
             bounds,
@@ -1913,6 +1956,12 @@ fn load_config() -> Result<AppConfig, AppError> {
     default_store()?.load_config()
 }
 
+fn configured_notepad_always_on_top() -> bool {
+    load_config()
+        .map(|c| c.notepad_always_on_top)
+        .unwrap_or(true)
+}
+
 fn close_to_tray_enabled() -> bool {
     load_config()
         .map(|config| config.close_to_tray)
@@ -1979,6 +2028,28 @@ fn setup_global_shortcut_plugin(app: &AppHandle) -> tauri::Result<()> {
                                 open_notepad_window_now(&app_for_closure, None, bounds)
                             {
                                 eprintln!("failed to open notepad from global shortcut: {error}");
+                            }
+                        }) {
+                            eprintln!("failed to dispatch global shortcut action: {error}");
+                        }
+                    }
+                    ShortcutAction::OpenNoteHistory => {
+                        let bounds = if load_config().map(|c| c.open_at_cursor).unwrap_or(true) {
+                            let specs = saved_surface_specs(app);
+                            cursor_centered_bounds(&specs)
+                        } else {
+                            None
+                        };
+                        if let Err(error) = app.run_on_main_thread(move || {
+                            if let Err(error) = open_notepad_window_with_tab(
+                                &app_for_closure,
+                                None,
+                                bounds,
+                                Some("open"),
+                            ) {
+                                eprintln!(
+                                    "failed to open note history from global shortcut: {error}"
+                                );
                             }
                         }) {
                             eprintln!("failed to dispatch global shortcut action: {error}");
@@ -2159,16 +2230,38 @@ fn shortcut_bindings_from_config(config: &AppConfig) -> Result<ShortcutBindings,
             &config.toggle_visibility_shortcut,
         )?)
     };
+    let open_history = if config.open_history_shortcut.is_empty() {
+        None
+    } else {
+        Some(parse_configured_shortcut(
+            "openHistoryShortcut",
+            &config.open_history_shortcut,
+        )?)
+    };
 
-    // 只有两个快捷键都已设置时才需要检查重复，避免清空快捷键时误报配置冲突。
-    if open_notepad
-        .as_ref()
-        .zip(toggle_visibility.as_ref())
-        .is_some_and(|(open_notepad, toggle_visibility)| open_notepad == toggle_visibility)
-    {
+    // 三个快捷键两两比较；仅在两者都已设置时才检查重复，
+    // 避免清空快捷键时误报配置冲突。
+    let configured_count = [
+        open_notepad.as_ref(),
+        toggle_visibility.as_ref(),
+        open_history.as_ref(),
+    ]
+    .iter()
+    .filter_map(|shortcut| *shortcut)
+    .count();
+    let unique_count = [
+        open_notepad.as_ref(),
+        toggle_visibility.as_ref(),
+        open_history.as_ref(),
+    ]
+    .iter()
+    .filter_map(|shortcut| *shortcut)
+    .collect::<std::collections::HashSet<_>>()
+    .len();
+    if configured_count != unique_count {
         return Err(Box::new(AppError {
             code: "duplicateShortcut".into(),
-            message: "visibility toggle shortcut must differ from global shortcut".into(),
+            message: "configured global shortcuts must differ from each other".into(),
             details: Default::default(),
         }));
     }
@@ -2176,6 +2269,7 @@ fn shortcut_bindings_from_config(config: &AppConfig) -> Result<ShortcutBindings,
     Ok(ShortcutBindings {
         open_notepad,
         toggle_visibility,
+        open_history,
     })
 }
 
@@ -2195,6 +2289,9 @@ fn install_global_shortcut_bindings(
         app.global_shortcut().register(*shortcut)?;
     }
     if let Some(shortcut) = &bindings.toggle_visibility {
+        app.global_shortcut().register(*shortcut)?;
+    }
+    if let Some(shortcut) = &bindings.open_history {
         app.global_shortcut().register(*shortcut)?;
     }
 
@@ -2564,7 +2661,11 @@ mod tests {
     }
 
     #[cfg(desktop)]
-    fn test_app_config(global_shortcut: &str, toggle_visibility_shortcut: &str) -> AppConfig {
+    fn test_app_config(
+        global_shortcut: &str,
+        toggle_visibility_shortcut: &str,
+        open_history_shortcut: &str,
+    ) -> AppConfig {
         AppConfig {
             locale: "zh-CN".into(),
             data_dir: Some("D:\\notes".into()),
@@ -2599,6 +2700,8 @@ mod tests {
             surface_width: None,
             surface_height: None,
             toggle_visibility_shortcut: toggle_visibility_shortcut.into(),
+            open_history_shortcut: open_history_shortcut.into(),
+            notepad_always_on_top: true,
             notes_dir: None,
             last_known_base_dir: None,
         }
@@ -2607,7 +2710,20 @@ mod tests {
     #[cfg(desktop)]
     #[test]
     fn rejects_duplicate_shortcut_bindings() {
-        let config = test_app_config("Ctrl+Shift+K", "Ctrl+Shift+K");
+        let config = test_app_config("Ctrl+Shift+K", "Ctrl+Shift+K", "");
+
+        let error = match shortcut_bindings_from_config(&config) {
+            Ok(_) => panic!("expected duplicate shortcut error"),
+            Err(error) => error,
+        };
+
+        assert!(error.to_string().contains("must differ"));
+    }
+
+    #[cfg(desktop)]
+    #[test]
+    fn rejects_open_history_shortcut_duplicating_existing_binding() {
+        let config = test_app_config("Ctrl+Shift+K", "", "Ctrl+Shift+K");
 
         let error = match shortcut_bindings_from_config(&config) {
             Ok(_) => panic!("expected duplicate shortcut error"),
@@ -2620,24 +2736,38 @@ mod tests {
     #[cfg(desktop)]
     #[test]
     fn accepts_empty_shortcut_bindings() {
-        let config = test_app_config("", "");
+        let config = test_app_config("", "", "");
 
         let bindings = shortcut_bindings_from_config(&config).expect("empty shortcuts are valid");
 
         assert!(bindings.open_notepad.is_none());
         assert!(bindings.toggle_visibility.is_none());
+        assert!(bindings.open_history.is_none());
     }
 
     #[cfg(desktop)]
     #[test]
     fn accepts_visibility_shortcut_when_quick_note_shortcut_is_empty() {
-        let config = test_app_config("", "Ctrl+Shift+H");
+        let config = test_app_config("", "Ctrl+Shift+H", "");
 
         let bindings =
             shortcut_bindings_from_config(&config).expect("single visibility shortcut is valid");
 
         assert!(bindings.open_notepad.is_none());
         assert!(bindings.toggle_visibility.is_some());
+    }
+
+    #[cfg(desktop)]
+    #[test]
+    fn accepts_distinct_open_history_shortcut() {
+        let config = test_app_config("Ctrl+Space", "Ctrl+Shift+H", "Ctrl+Shift+J");
+
+        let bindings =
+            shortcut_bindings_from_config(&config).expect("distinct shortcuts are valid");
+
+        assert!(bindings.open_notepad.is_some());
+        assert!(bindings.toggle_visibility.is_some());
+        assert!(bindings.open_history.is_some());
     }
 
     #[test]
@@ -2684,6 +2814,8 @@ mod tests {
             surface_width: None,
             surface_height: None,
             toggle_visibility_shortcut: String::new(),
+            open_history_shortcut: String::new(),
+            notepad_always_on_top: true,
             notes_dir: None,
             last_known_base_dir: None,
         };
@@ -2721,6 +2853,8 @@ mod tests {
             surface_width: None,
             surface_height: None,
             toggle_visibility_shortcut: "Ctrl+Shift+H".into(),
+            open_history_shortcut: "Ctrl+Shift+J".into(),
+            notepad_always_on_top: false,
             notes_dir: None,
             last_known_base_dir: None,
         };
@@ -2731,6 +2865,7 @@ mod tests {
                 autostart_changed: true,
                 global_shortcut_changed: true,
                 toggle_visibility_shortcut_changed: true,
+                open_history_shortcut_changed: true,
             }
         );
         assert_eq!(
@@ -2739,6 +2874,7 @@ mod tests {
                 autostart_changed: false,
                 global_shortcut_changed: false,
                 toggle_visibility_shortcut_changed: false,
+                open_history_shortcut_changed: false,
             }
         );
     }

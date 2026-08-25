@@ -194,6 +194,11 @@ export function SettingsPanel({ config, onChange, onMigrateDataDir, onClose }: S
             onChange={(checked) => setConfigValue("rememberSurfaceSize", checked)}
           />
           <ToggleRow
+            label={t("settings.notepadAlwaysOnTop", { defaultValue: "便签窗口置顶" })}
+            checked={config.notepadAlwaysOnTop}
+            onChange={(checked) => setConfigValue("notepadAlwaysOnTop", checked)}
+          />
+          <ToggleRow
             label={t("settings.tileRenderMarkdown", { defaultValue: "磁贴渲染 Markdown" })}
             checked={config.tileRenderMarkdown}
             onChange={(checked) => setConfigValue("tileRenderMarkdown", checked)}
@@ -248,6 +253,15 @@ export function SettingsPanel({ config, onChange, onMigrateDataDir, onClose }: S
             <ShortcutRecorder
               value={config.toggleVisibilityShortcut}
               onChange={(v) => setConfigValue("toggleVisibilityShortcut", v)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-body text-ink-faint/70 px-0.5">
+              {t("settings.openHistoryShortcut", { defaultValue: "打开历史便签快捷键" })}
+            </label>
+            <ShortcutRecorder
+              value={config.openHistoryShortcut}
+              onChange={(v) => setConfigValue("openHistoryShortcut", v)}
             />
           </div>
         </section>
