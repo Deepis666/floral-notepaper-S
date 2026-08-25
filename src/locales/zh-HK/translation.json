@@ -108,6 +108,7 @@
       "headingText": "標題",
       "italicText": "斜體文字",
       "listItem": "清單項目",
+      "mermaidText": "graph TD\n    A[開始] --> B[結束]",
       "quoteText": "引用文字"
     },
     "search": {
@@ -146,6 +147,7 @@
       "hr": "分隔線",
       "inlineMath": "行內公式",
       "italic": "斜體",
+      "mermaid": "Mermaid 圖表",
       "ol": "有序清單",
       "quote": "引用",
       "ul": "無序清單"

@@ -11,6 +11,10 @@ function loadMermaid(): Promise<Mermaid> {
       module.default.initialize({ startOnLoad: false, suppressErrorRendering: true });
       return module.default;
     });
+    // 加载失败时清空缓存，下次代码变化时可重试加载
+    void mermaidLoader.catch(() => {
+      mermaidLoader = null;
+    });
   }
   return mermaidLoader;
 }
@@ -52,7 +56,7 @@ export function MermaidBlock({ code }: { code: string }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [theme, setTheme] = useState<string | null>(() =>
-    document.documentElement.getAttribute("data-theme"),
+    typeof document === "undefined" ? null : document.documentElement.getAttribute("data-theme"),
   );
   const baseId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -70,12 +74,20 @@ export function MermaidBlock({ code }: { code: string }) {
     let ignore = false;
     setFailed(false);
     setSvg(null);
-    // 编辑预览实时联动：防抖避免每次按键都重新渲染图表
+    // 编辑预览实时联动：防抖避免每次按键都重新渲染图表；
+    // 模块加载失败时保持展示源码，避免误报为语法错误，
+    // 仅 parse/render 失败才提示用户检查语法。
     const timer = window.setTimeout(() => {
       void (async () => {
+        let mermaid: Mermaid;
         try {
-          const mermaid = await loadMermaid();
-          if (ignore) return;
+          mermaid = await loadMermaid();
+        } catch {
+          // 模块加载失败：保持展示源码，不报语法错误，下次变更时重试
+          return;
+        }
+        if (ignore) return;
+        try {
           // 主题切换后用对应主题重新初始化，再渲染当前代码块
           mermaid.initialize({
             startOnLoad: false,
@@ -87,7 +99,7 @@ export function MermaidBlock({ code }: { code: string }) {
           const { svg: rendered, bindFunctions } = await mermaid.render(renderId, code);
           if (ignore) return;
           setSvg(rendered);
-          if (bindFunctions) bindFunctions(containerRef.current ?? document.body);
+          bindFunctions?.(containerRef.current ?? document.body);
         } catch {
           if (!ignore) setFailed(true);
         }
