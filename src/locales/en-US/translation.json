@@ -108,6 +108,7 @@
       "headingText": "Heading",
       "italicText": "Italic text",
       "listItem": "List item",
+      "mermaidText": "graph TD\n    A[Start] --> B[End]",
       "quoteText": "Blockquote"
     },
     "search": {
@@ -146,6 +147,7 @@
       "hr": "Horizontal rule",
       "inlineMath": "Inline math",
       "italic": "Italic",
+      "mermaid": "Mermaid diagram",
       "ol": "Ordered list",
       "quote": "Blockquote",
       "ul": "Unordered list"

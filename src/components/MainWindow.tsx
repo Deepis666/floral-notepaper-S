@@ -132,7 +132,8 @@ type FormatAction =
   | "code"
   | "quote"
   | "inlineMath"
-  | "blockMath";
+  | "blockMath"
+  | "mermaid";
 
 function applyFormat(
   textarea: HTMLTextAreaElement,
@@ -286,6 +287,19 @@ function applyFormat(
       result = before + wrapped + after;
       cursorStart = start + 4;
       cursorEnd = cursorStart + (selected || "x^2 + y^2 = r^2").length;
+      break;
+    }
+    case "mermaid": {
+      // 插入完整的 mermaid 围栏块，省去手打围栏；有选中文本时直接包成图代码，
+      // 光标选中块内代码便于直接改写（\n```mermaid\n 共 12 字符）
+      const fallback = translate("main.formatSample.mermaidText", {
+        defaultValue: "graph TD\n    A[开始] --> B[结束]",
+      });
+      const body = selected || fallback;
+      const wrapped = `\n\`\`\`mermaid\n${body}\n\`\`\`\n`;
+      result = before + wrapped + after;
+      cursorStart = start + 12;
+      cursorEnd = cursorStart + body.length;
       break;
     }
   }
@@ -543,6 +557,12 @@ export function MainWindow({
         title: t("main.toolbar.blockMath", { defaultValue: "块级公式" }),
         style: "font-mono text-[11px]",
         action: "blockMath",
+      },
+      {
+        label: "⧉",
+        title: t("main.toolbar.mermaid", { defaultValue: "Mermaid 图表" }),
+        style: "text-[11px]",
+        action: "mermaid",
       },
     ],
     [t],
