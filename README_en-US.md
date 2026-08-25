@@ -11,8 +11,8 @@
 A lightweight, elegant, and modern sticky note app for your desktop<br>
 Built with Tauri 2 + React
 
-[Report an Issue](https://github.com/Achilng/floral-notepaper/issues) · [Changelog](https://github.com/Achilng/floral-notepaper/releases) <br>
-[Quick Start](#quick-start) · [FAQ](https://github.com/Achilng/floral-notepaper/wiki) · [Building from Source](#building-from-source)
+[Report an Issue](https://github.com/Deepis666/floral-notepaper-S/issues) · [Changelog](https://github.com/Deepis666/floral-notepaper-S/releases) <br>
+[Quick Start](#quick-start) · [Fork Differences](#differences-from-the-upstream-version) · [Building from Source](#building-from-source)
 
 [![Version](https://img.shields.io/github/v/release/Achilng/floral-notepaper)](https://github.com/Achilng/floral-notepaper/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -27,6 +27,37 @@ Built with Tauri 2 + React
 <!-- markdownlint-restore -->
 
 ---
+
+> [!IMPORTANT]
+> This repository is a **personal fork** of [the upstream Floral Notepaper (Achilng/floral-notepaper)](https://github.com/Achilng/floral-notepaper). It keeps every upstream feature while adding the changes below; download channels, contributors and sponsors still refer to the original project.
+
+## Differences from the Upstream Version
+
+All changes this fork makes on top of upstream (baseline: upstream v1.1.0):
+
+### 🖼️ Image Fixes & Enhancements (v1.1.1)
+
+- Fixed silently broken image paste / drag & drop on Windows (traverses both `DataTransfer.items` and `files`, falling back to extension-based detection when the MIME type is missing)
+- Notepad floating windows also accept dropped images; dropping an image with no note open creates one automatically, with a toast hint
+
+### 📊 Mermaid Diagram Support (v1.1.1)
+
+- Markdown preview renders `mermaid` code blocks (lazy-loaded, follows the theme, degrades gracefully on syntax errors, in a separate chunk so first paint stays fast)
+- Editor toolbar button inserts a mermaid fenced block in one click; selected text is wrapped directly into diagram code
+
+### 🗒️ Notepad Experience (v1.1.2)
+
+- **No more empty notepads**: a shortcut-opened notepad with no content is no longer persisted on save/close; a bound note cleared to blank is deleted on save; empty notepads cannot be pinned to a tile
+- **Note history shortcut**: a third global shortcut, "Open note history" (unset by default, recordable in settings), summons the notepad window straight into the history list
+- **Configurable always-on-top**: new "Keep notepad window on top" setting (on by default, so it does not cover full-screen games); a pin toggle in the notepad header applies instantly and persists; tile windows follow suit and all windows stay in sync
+
+### 🎨 Background Image Readability (v1.1.2)
+
+- New "Content shade" setting (default 35%): with a custom background image, a translucent theme-paper panel is layered over the content area so text and toolbars stay readable while the image is never fogged out; 0–90% adjustable, adapts to light/dark themes automatically, inactive without a background image
+
+### 🛡️ Stability (v1.1.2)
+
+- **Data directory self-healing**: when the recorded data directory has been deleted or moved (leftover uninstall paths, manual moves, lost drive letters), the app falls back to a former location that still holds data or to the default directory and repairs the config, instead of crashing at startup
 
 ## Why Floral Notepaper
 
@@ -58,6 +89,9 @@ Most note-taking or sticky note apps out there are either bloated and steep to l
 ## Quick Start
 
 ### Download
+
+> [!NOTE]
+> Installers for this fork are published on this repository's [Releases page](https://github.com/Deepis666/floral-notepaper-S/releases); the upstream channels below only apply to the original app.
 
 #### Via MirrorChyan
 
