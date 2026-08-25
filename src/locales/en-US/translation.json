@@ -46,7 +46,8 @@
     "categoryNameInvalidChars": "Category name cannot contain special characters",
     "categoryNotFound": "Category \"{{category}}\" not found",
     "desktopConfig": "Failed to update desktop configuration",
-    "duplicateShortcut": "Show/Hide shortcut cannot be the same as Quick Note shortcut",
+    "duplicateShortcut": "Shortcuts must be unique",
+    "emptyNoteCannotPin": "Empty notes cannot be pinned to a tile",
     "imagePasteFailed": "Image paste failed",
     "imageTooLarge": "Image file too large (max 20 MB)",
     "noPool": "Notepad window pool not yet initialized",
@@ -200,7 +201,9 @@
       "open": "Open"
     },
     "tooltip": {
+      "alwaysOnTop": "Always on top",
       "close": "Close",
+      "notAlwaysOnTop": "Disable always on top",
       "openInEditor": "Open in Editor",
       "pinToTile": "Pin to Tile"
     }
@@ -231,7 +234,9 @@
       "zhHK": "繁體中文"
     },
     "dataDir": "Data directory",
+    "notepadAlwaysOnTop": "Keep notepad window on top",
     "openAtCursor": "Open near cursor with shortcut",
+    "openHistoryShortcut": "Open note history shortcut",
     "quickNoteShortcut": "Quick Note shortcut",
     "rememberSurfaceSize": "Remember surface size",
     "tabIndentSize": "Tab indent width",

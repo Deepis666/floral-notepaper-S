@@ -46,7 +46,8 @@
     "categoryNameInvalidChars": "分類名稱不能包含特殊字元",
     "categoryNotFound": "分類「{{category}}」不存在",
     "desktopConfig": "桌面配置更新失敗",
-    "duplicateShortcut": "顯示／隱藏視窗快捷鍵不能與呼出小窗快捷鍵重複",
+    "duplicateShortcut": "快捷鍵不能重複",
+    "emptyNoteCannotPin": "空便箋無法釘為磁貼",
     "imagePasteFailed": "圖片貼上失敗",
     "imageTooLarge": "圖片檔案過大（上限 20 MB）",
     "noPool": "便箋視窗池尚未初始化",
@@ -200,7 +201,9 @@
       "open": "開啟"
     },
     "tooltip": {
+      "alwaysOnTop": "置頂",
       "close": "關閉",
+      "notAlwaysOnTop": "取消置頂",
       "openInEditor": "在編輯器中開啟",
       "pinToTile": "轉為磁貼"
     }
@@ -231,7 +234,9 @@
       "zhHK": "繁體中文"
     },
     "dataDir": "數據目錄",
+    "notepadAlwaysOnTop": "便箋視窗置頂",
     "openAtCursor": "快捷鍵開啟時跟隨滑鼠位置",
+    "openHistoryShortcut": "開啟歷史便箋快捷鍵",
     "quickNoteShortcut": "快捷記錄快捷鍵",
     "rememberSurfaceSize": "記住小窗尺寸",
     "tabIndentSize": "Tab 縮排寬度",

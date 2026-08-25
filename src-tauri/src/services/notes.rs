@@ -86,6 +86,10 @@ pub struct AppConfig {
     pub surface_height: Option<u32>,
     #[serde(default = "default_toggle_visibility_shortcut")]
     pub toggle_visibility_shortcut: String,
+    #[serde(default)]
+    pub open_history_shortcut: String,
+    #[serde(default = "default_notepad_always_on_top")]
+    pub notepad_always_on_top: bool,
     #[serde(default = "default_open_at_cursor")]
     pub open_at_cursor: bool,
     // Legacy fields — read from old config, never written back
@@ -1082,6 +1086,8 @@ impl NoteStore {
             surface_width: None,
             surface_height: None,
             toggle_visibility_shortcut: default_toggle_visibility_shortcut(),
+            open_history_shortcut: String::new(),
+            notepad_always_on_top: default_notepad_always_on_top(),
             open_at_cursor: default_open_at_cursor(),
             notes_dir: None,
             last_known_base_dir: None,
@@ -1655,6 +1661,10 @@ fn default_toggle_visibility_shortcut() -> String {
     String::new()
 }
 
+fn default_notepad_always_on_top() -> bool {
+    true
+}
+
 fn default_open_at_cursor() -> bool {
     true
 }
@@ -1829,6 +1839,8 @@ mod tests {
             surface_width: None,
             surface_height: None,
             toggle_visibility_shortcut: String::new(),
+            open_history_shortcut: String::new(),
+            notepad_always_on_top: false,
             notes_dir: None,
             last_known_base_dir: None,
             open_at_cursor: true,

@@ -46,7 +46,8 @@
     "categoryNameInvalidChars": "分类名不能包含特殊字符",
     "categoryNotFound": "分类「{{category}}」不存在",
     "desktopConfig": "桌面配置更新失败",
-    "duplicateShortcut": "显示/隐藏窗口快捷键不能与呼出小窗快捷键重复",
+    "duplicateShortcut": "快捷键不能重复",
+    "emptyNoteCannotPin": "空便签无法钉为磁贴",
     "imagePasteFailed": "图片粘贴失败",
     "imageTooLarge": "图片文件过大（上限 20 MB）",
     "noPool": "便签窗口池尚未初始化",
@@ -200,7 +201,9 @@
       "open": "打开"
     },
     "tooltip": {
+      "alwaysOnTop": "置顶",
       "close": "关闭",
+      "notAlwaysOnTop": "取消置顶",
       "openInEditor": "在编辑器中打开",
       "pinToTile": "转为磁贴"
     }
@@ -231,7 +234,9 @@
       "zhHK": "繁體中文"
     },
     "dataDir": "数据目录",
+    "notepadAlwaysOnTop": "便签窗口置顶",
     "openAtCursor": "快捷键打开时跟随鼠标位置",
+    "openHistoryShortcut": "打开历史便签快捷键",
     "quickNoteShortcut": "快捷记录快捷键",
     "rememberSurfaceSize": "记住小窗尺寸",
     "tabIndentSize": "Tab 缩进宽度",

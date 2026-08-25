@@ -31,6 +31,8 @@ export interface AppConfig {
   surfaceWidth?: number;
   surfaceHeight?: number;
   toggleVisibilityShortcut: string;
+  openHistoryShortcut: string;
+  notepadAlwaysOnTop: boolean;
   openAtCursor: boolean;
   backgroundImagePath?: string;
   backgroundFit?: BackgroundFit;
