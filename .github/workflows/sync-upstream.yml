@@ -1,0 +1,53 @@
+name: Sync Upstream
+
+# 让 fork 的 main 分支自动跟随上游 Achilng/floral-notepaper 的 main。
+# 策略：main 上仅允许存在"本工作流"这一个自有提交，每次同步通过 rebase
+# 把它重放到上游最新提交之上，保证 main 内容始终 = 上游 + 本文件。
+# 个人修改一律放在独立分支（如 feat/*），不要合入 main。
+
+on:
+  schedule:
+    # 每天 02:00 UTC（北京时间 10:00）检查上游更新
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/Achilng/floral-notepaper.git
+          git fetch upstream main
+
+      - name: Rebase onto upstream/main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          MERGE_BASE=$(git merge-base main upstream/main)
+
+          if [ "$MERGE_BASE" = "$UPSTREAM_SHA" ]; then
+            echo "main already contains upstream/main ($UPSTREAM_SHA), nothing to do."
+            exit 0
+          fi
+
+          echo "Rebasing main onto upstream/main ($UPSTREAM_SHA)..."
+          if ! git rebase upstream/main; then
+            git rebase --abort
+            echo "::warning::Rebase conflicted (upstream touched sync-upstream.yml?). main left unchanged; resolve manually."
+            exit 0
+          fi
+
+          git push --force-with-lease origin main
+          echo "main synced to upstream/main + local workflow commit."
