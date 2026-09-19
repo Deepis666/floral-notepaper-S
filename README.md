@@ -11,8 +11,8 @@
 轻量、优雅、现代化的本地便签工具<br>
 基于 Tauri 2 + React 构建
 
-[反馈问题](https://github.com/Achilng/floral-notepaper/issues) · [更新日志](https://github.com/Achilng/floral-notepaper/releases) <br>
-[快速开始](#快速开始) · [FAQ](https://github.com/Achilng/floral-notepaper/wiki) · [构建指南](#从源码构建)
+[反馈问题](https://github.com/Deepis666/floral-notepaper-S/issues) · [更新日志](https://github.com/Deepis666/floral-notepaper-S/releases) <br>
+[快速开始](#快速开始) · [改版区别](#改版与原版区别) · [构建指南](#从源码构建)
 
 [![Version](https://img.shields.io/github/v/release/Achilng/floral-notepaper)](https://github.com/Achilng/floral-notepaper/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -27,6 +27,37 @@
 <!-- markdownlint-restore -->
 
 ---
+
+> [!IMPORTANT]
+> 本仓库是 [花笺原版（Achilng/floral-notepaper）](https://github.com/Achilng/floral-notepaper) 的**个人改版**，已同步至上游 v1.2.0，并在其基础上进行了以下修改与增强；原版的下载渠道、贡献者与赞助信息均仍指向原项目。
+
+## 改版与原版区别
+
+以下为本改版相对原版的独有改动（自 v1.2.1 起，基线已同步上游 v1.2.0）：
+
+### 🖼️ 图片功能修复与增强
+
+- 修复 Windows 剪贴板粘贴 / 拖拽图片静默失效的问题（同时遍历 `DataTransfer.items` 与 `files`，MIME 缺失时按扩展名回退识别）
+- 便签浮窗同样支持拖入图片；无笔记时拖入图片自动创建笔记，拖入时给出提示
+
+### 📊 Mermaid 图表支持
+
+- Markdown 预览支持渲染 `mermaid` 代码块（懒加载、主题跟随、语法错误降级提示，独立 chunk 不拖慢首屏）
+- 编辑工具栏新增一键插入 mermaid 围栏块按钮，选中文本时直接包成图代码
+
+### 🗒️ 便签体验优化
+
+- **空便签不再残留**：快捷键呼出的便签若无内容，保存/关闭不再落库；已绑定笔记被清空后保存时自动删除；空便签不可钉为磁贴
+- **历史便签快捷键**：新增第三个全局快捷键“打开历史便签”（默认未设置，可在设置中录制），按下即呼出便签窗口并直接展示历史笔记列表
+- **置顶可配置**：新增“便签窗口置顶”设置（默认开启，游戏全屏时不遮挡），便签窗口头部新增置顶切换按钮即时生效并持久化，磁贴窗口同步遵循，多窗口间状态自动同步
+
+### 🎨 背景图可读性优化
+
+- 新增“内容蒙版”设置（默认 35%）：设置自定义背景图时，向内容区叠加一层主题纸色半透明面板，正文与工具栏清晰可读，而图片不被整体蒙灰；强度 0–90% 可调，明暗主题自动适配，无背景图时不生效
+
+### 🛡️ 稳定性
+
+- **数据目录失效自愈**：配置中记录的数据目录被删除或移动（如卸载残留、手动搬移、盘符失效）时，自动回退到仍含数据的旧位置或默认目录并写回配置，不再导致应用启动崩溃
 
 ## 为什么选择花笺
 
@@ -58,6 +89,9 @@
 ## 快速开始
 
 ### 下载安装
+
+> [!NOTE]
+> 本改版的安装包以本仓库 [Releases 页](https://github.com/Deepis666/floral-notepaper-S/releases) 发布为准；以下原项目渠道（Mirror酱 / Microsoft Store 等）仅适用于原版花笺。
 
 #### 通过Mirror酱下载
 

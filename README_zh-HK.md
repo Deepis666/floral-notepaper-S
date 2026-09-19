@@ -11,8 +11,8 @@
 輕巧、優雅、現代化的本機便箋工具<br>
 基於 Tauri 2 + React 構建
 
-[回報問題](https://github.com/Achilng/floral-notepaper/issues) · [更新日誌](https://github.com/Achilng/floral-notepaper/releases) <br>
-[快速開始](#快速開始) · [FAQ](https://github.com/Achilng/floral-notepaper/wiki) · [構建指南](#從原始碼構建)
+[回報問題](https://github.com/Deepis666/floral-notepaper-S/issues) · [更新日誌](https://github.com/Deepis666/floral-notepaper-S/releases) <br>
+[快速開始](#快速開始) · [改版區別](#改版與原版區別) · [構建指南](#從原始碼構建)
 
 [![Version](https://img.shields.io/github/v/release/Achilng/floral-notepaper)](https://github.com/Achilng/floral-notepaper/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -27,6 +27,37 @@
 <!-- markdownlint-restore -->
 
 ---
+
+> [!IMPORTANT]
+> 本倉庫是 [花箋原版（Achilng/floral-notepaper）](https://github.com/Achilng/floral-notepaper) 的**個人改版**，已同步至上游 v1.2.0，並在其基礎上進行了以下修改與增強；原版的下載渠道、貢獻者與贊助資訊均仍指向原專案。
+
+## 改版與原版區別
+
+以下為本改版相對原版的獨有改動（自 v1.2.1 起，基線已同步上游 v1.2.0）：
+
+### 🖼️ 圖片功能修復與增強
+
+- 修復 Windows 剪貼簿貼上 / 拖曳圖片靜默失效的問題（同時遍歷 `DataTransfer.items` 與 `files`，MIME 缺失時按副檔名回退識別）
+- 便箋浮窗同樣支援拖入圖片；無筆記時拖入圖片自動建立筆記，拖入時給出提示
+
+### 📊 Mermaid 圖表支援
+
+- Markdown 預覽支援渲染 `mermaid` 程式碼區塊（懶載入、主題跟隨、語法錯誤降級提示，獨立 chunk 不拖慢首屏）
+- 編輯工具列新增一鍵插入 mermaid 圍欄區塊按鈕，選取文字時直接包成圖程式碼
+
+### 🗒️ 便箋體驗優化
+
+- **空便箋不再殘留**：快捷鍵喚出的便箋若無內容，儲存/關閉不再落庫；已綁定筆記被清空後儲存時自動刪除；空便箋無法釘為磁貼
+- **歷史便箋快捷鍵**：新增第三個全域快捷鍵「開啟歷史便箋」（預設未設定，可在設定中錄製），按下即喚出便箋視窗並直接展示歷史筆記列表
+- **置頂可配置**：新增「便箋視窗置頂」設定（預設開啟，遊戲全螢幕時不遮擋），便箋視窗頭部新增置頂切換按鈕即時生效並持久化，磁貼視窗同步遵循，多視窗間狀態自動同步
+
+### 🎨 背景圖可讀性優化
+
+- 新增「內容遮罩」設定（預設 35%）：設定自訂背景圖片時，向內容區疊加一層主題紙色半透明面板，正文與工具列清晰可讀，而圖片不被整體蒙灰；強度 0–90% 可調，明暗主題自動適配，無背景圖時不生效
+
+### 🛡️ 穩定性
+
+- **資料目錄失效自癒**：設定中記錄的資料目錄被刪除或移動（如解除安裝殘留、手動搬移、磁碟機代號失效）時，自動回退到仍含資料的舊位置或預設目錄並寫回設定，不再導致應用程式啟動崩潰
 
 ## 為什麼選擇花箋
 
@@ -58,6 +89,9 @@
 ## 快速開始
 
 ### 下載安裝
+
+> [!NOTE]
+> 本改版的安裝包以本倉庫 [Releases 頁](https://github.com/Deepis666/floral-notepaper-S/releases) 發布為準；以下原專案渠道（Mirror醬 / Microsoft Store 等）僅適用於原版花箋。
 
 #### 透過 Mirror 醬下載
 
