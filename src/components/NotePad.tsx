@@ -45,6 +45,7 @@ import {
   shouldReturnToTileAfterManualSave,
   shouldSaveBeforeSwitchingToTile,
 } from "../features/windows/noteSurfaceSavePolicy";
+import { externalDeleteDecision } from "../features/windows/noteSurfaceSyncPolicy";
 import {
   NOTE_SURFACE_ACTION_EVENT,
   surfaceActionFromEvent,
@@ -165,6 +166,8 @@ export function NotePad({
   const tileDragIntentRef = useRef<{ x: number; y: number } | null>(null);
   const windowLabelRef = useRef("");
   const statusRef = useRef<NotePadStatus>("empty");
+  const editingNoteIdRef = useRef(editingNoteId);
+  editingNoteIdRef.current = editingNoteId;
   const contentValueRef = useRef(content);
   contentValueRef.current = content;
   const titleValueRef = useRef(title);
@@ -218,6 +221,34 @@ export function NotePad({
     setStatus("opened");
   }, []);
 
+  // 笔记列表在外部发生变化（主窗口删除、回收站还原等）后的统一同步入口：
+  // 刷新列表；若编辑中的笔记已在别处被删除，解绑为未保存草稿，
+  // 避免后续保存继续对已删除的 id 调 updateNote 报错
+  const syncAfterExternalChange = useCallback(async () => {
+    if (dormantRef.current) return;
+    const loaded = await refreshNotes();
+    const decision = externalDeleteDecision(
+      editingNoteIdRef.current,
+      loaded,
+      Boolean(titleValueRef.current.trim() || contentValueRef.current.trim()),
+    );
+    if (decision === "keep") return;
+    setEditingNoteId(null);
+    setMode("new");
+    if (decision === "reset") {
+      setTitle("");
+      setContent("");
+      setStatus("empty");
+      return;
+    }
+    setStatus("dirty");
+    showToast(
+      t("notepad.error.noteDeleted", {
+        defaultValue: "打开的笔记已被删除，内容保留为未保存草稿",
+      }),
+    );
+  }, [refreshNotes, t]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -254,12 +285,35 @@ export function NotePad({
 
   useEffect(() => {
     const unlisten = listen("notes-changed", () => {
-      void refreshNotes().catch(() => undefined);
+      void syncAfterExternalChange().catch(() => undefined);
     });
     return () => {
       void unlisten.then((fn) => fn());
     };
-  }, [refreshNotes]);
+  }, [syncAfterExternalChange]);
+
+  // 从系统回收站还原等外部操作不会触发应用内事件，窗口重新获得焦点时补一次同步
+  useEffect(() => {
+    let unlistenFocus: (() => void) | null = null;
+    let disposed = false;
+    try {
+      void getCurrentWindow()
+        .onFocusChanged(({ payload: focused }) => {
+          if (focused) void syncAfterExternalChange().catch(() => undefined);
+        })
+        .then((fn) => {
+          if (disposed) fn();
+          else unlistenFocus = fn;
+        })
+        .catch(() => undefined);
+    } catch {
+      // 非 Tauri 环境（测试）
+    }
+    return () => {
+      disposed = true;
+      unlistenFocus?.();
+    };
+  }, [syncAfterExternalChange]);
 
   useEffect(() => {
     if (isStandby.current) return;
@@ -365,6 +419,11 @@ export function NotePad({
     if (decision === "delete" && editingNoteId) {
       // 已绑定的笔记被清空：自动删除该记录，回到空白草稿
       await deleteNote(editingNoteId);
+      // 后端会随删除广播 notes-changed：先同步清空 ref，
+      // 避免事件早于重渲染到达时 syncAfterExternalChange 误判为“被外部删除”
+      editingNoteIdRef.current = null;
+      titleValueRef.current = "";
+      contentValueRef.current = "";
       setNotes((current) => current.filter((item) => item.id !== editingNoteId));
       setEditingNoteId(null);
       setTitle("");

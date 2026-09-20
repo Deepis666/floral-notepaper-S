@@ -181,7 +181,8 @@
       "placeholder": "搜索笔记…"
     },
     "error": {
-      "copyUnsupported": "当前环境不支持复制"
+      "copyUnsupported": "当前环境不支持复制",
+      "noteDeleted": "打开的笔记已被删除，内容保留为未保存草稿"
     },
     "placeholder": {
       "content": "写点什么……",

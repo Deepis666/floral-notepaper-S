@@ -181,7 +181,8 @@
       "placeholder": "Search notes…"
     },
     "error": {
-      "copyUnsupported": "Copy is not supported in this environment"
+      "copyUnsupported": "Copy is not supported in this environment",
+      "noteDeleted": "The open note was deleted; its content is kept as an unsaved draft"
     },
     "placeholder": {
       "content": "Write something…",

@@ -181,7 +181,8 @@
       "placeholder": "搜尋筆記…"
     },
     "error": {
-      "copyUnsupported": "目前環境不支援複製"
+      "copyUnsupported": "目前環境不支援複製",
+      "noteDeleted": "開啟的筆記已被刪除，內容保留為未儲存草稿"
     },
     "placeholder": {
       "content": "寫點什麼……",
