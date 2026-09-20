@@ -24,6 +24,7 @@ import {
   tagPreviewBlocks,
   type ScrollSyncMap,
 } from "../features/markdown/scrollSync";
+import { buildHrInsertion } from "../features/markdown/hrInsertion";
 import {
   chooseDataDirectory,
   getConfig,
@@ -200,10 +201,10 @@ function applyFormat(
       break;
     }
     case "hr": {
-      const newlineBefore = before.endsWith("\n") || before === "" ? "" : "\n";
-      const newlineAfter = after.startsWith("\n") || after === "" ? "" : "\n";
-      result = before + `${newlineBefore}---${newlineAfter}` + after;
-      cursorStart = cursorEnd = before.length + newlineBefore.length + 3;
+      // 保证 `---` 前后有空行，否则紧邻正文时会被解析为 setext 标题而非水平线
+      const insertion = buildHrInsertion(value, start, end);
+      result = insertion.result;
+      cursorStart = cursorEnd = insertion.cursor;
       break;
     }
     case "ul": {
