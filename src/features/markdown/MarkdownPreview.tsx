@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import remarkBreaks from "remark-breaks";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
@@ -72,7 +73,9 @@ interface MarkdownPreviewProps {
   imageBaseDir?: string;
 }
 
-const remarkPlugins = [remarkGfm, remarkMath, remarkAlerts];
+// remarkBreaks 放在链尾：先由 remarkMath 抽出公式节点，再把段落内单个换行渲染为 <br>，
+// 与笔记类应用“编辑区回车即预览换行”的直觉一致
+const remarkPlugins = [remarkGfm, remarkMath, remarkAlerts, remarkBreaks];
 const sanitizeSchema = {
   ...defaultSchema,
   tagNames: [...(defaultSchema.tagNames ?? []), "mark", "center", "font", "u", "abbr"],
