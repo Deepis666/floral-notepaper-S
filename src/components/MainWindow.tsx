@@ -27,6 +27,8 @@ import {
 } from "../features/markdown/scrollSync";
 import { buildHrInsertion } from "../features/markdown/hrInsertion";
 import { listContinuation } from "../features/markdown/listContinuation";
+import { genericTextIndent, listTabIndent, listTabOutdent } from "../features/markdown/listIndent";
+import { autoPair } from "../features/markdown/autoPair";
 import {
   chooseDataDirectory,
   getConfig,
@@ -1944,7 +1946,9 @@ export function MainWindow({
   }, [scheduleSyncedScroll, scrollSyncEnabled, viewMode]);
 
   // 编辑区快捷键与智能续行：格式快捷键复用工具栏的 applyFormat（保留原生撤销栈），
-  // 回车续行仅在无选区时接管；IME 组合输入期间全部放行
+  // 回车续行仅在无选区时接管；IME 组合输入期间全部放行。
+  // Tab 在此全权接管（不再走全局 indent-textarea 监听），列表行用列表感知缩进，
+  // 其余行回落通用缩进，避免 Tab 把焦点移出编辑区。
   const handleEditorKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.nativeEvent.isComposing) return;
@@ -1966,6 +1970,54 @@ export function MainWindow({
         event.preventDefault();
         applyFormat(textarea, action, t, setContent, markDirty);
         return;
+      }
+
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const indentUnit = " ".repeat(settingsConfig?.tabIndentSize ?? 2);
+        const { selectionStart, selectionEnd, value } = textarea;
+        const edit =
+          (event.shiftKey
+            ? listTabOutdent(value, selectionStart, selectionEnd, indentUnit)
+            : listTabIndent(value, selectionStart, selectionEnd, indentUnit)) ??
+          genericTextIndent(value, selectionStart, selectionEnd, indentUnit, event.shiftKey);
+        const previousScrollTop = textarea.scrollTop;
+        textarea.focus();
+        textarea.setSelectionRange(0, value.length);
+        document.execCommand("insertText", false, edit.value);
+        setContent(edit.value);
+        markDirty();
+        requestAnimationFrame(() => {
+          textarea.setSelectionRange(edit.selectionStart, edit.selectionEnd);
+          textarea.scrollTop = previousScrollTop;
+        });
+        return;
+      }
+
+      // 自动配对与包裹：仅响应无修饰键的单字符输入
+      if (!event.altKey && event.key.length === 1) {
+        const pair = autoPair(
+          textarea.value,
+          textarea.selectionStart,
+          textarea.selectionEnd,
+          event.key,
+        );
+        if (pair) {
+          event.preventDefault();
+          const previousScrollTop = textarea.scrollTop;
+          textarea.focus();
+          if (pair.value !== textarea.value) {
+            textarea.setSelectionRange(0, textarea.value.length);
+            document.execCommand("insertText", false, pair.value);
+            setContent(pair.value);
+            markDirty();
+          }
+          requestAnimationFrame(() => {
+            textarea.setSelectionRange(pair.selectionStart, pair.selectionEnd);
+            textarea.scrollTop = previousScrollTop;
+          });
+          return;
+        }
       }
 
       if (event.key !== "Enter" || event.shiftKey || event.altKey) return;
@@ -1992,7 +2044,7 @@ export function MainWindow({
         textarea.setSelectionRange(cursor, cursor);
       });
     },
-    [t, setContent, markDirty],
+    [t, setContent, markDirty, settingsConfig?.tabIndentSize],
   );
 
   const scrollToPreviewTop = useCallback(() => {
@@ -3053,7 +3105,7 @@ export function MainWindow({
                       <div className="flex-1 overflow-hidden px-5 pb-4">
                         <textarea
                           ref={contentRef}
-                          data-tab-indent="true"
+                          data-list-tab-aware="true"
                           value={content}
                           onChange={(event) => {
                             setContent(event.target.value);
