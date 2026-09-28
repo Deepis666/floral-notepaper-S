@@ -411,6 +411,7 @@ export function MainWindow({
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const [isResizingSplit, setIsResizingSplit] = useState(false);
+  const [previewShowBackTop, setPreviewShowBackTop] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const [categoryMenu, setCategoryMenu] = useState<CategoryMenuState | null>(null);
   const [categoryMenuClosing, setCategoryMenuClosing] = useState(false);
@@ -1863,6 +1864,7 @@ export function MainWindow({
     if (previewScrollRef.current) {
       previewScrollRef.current.scrollTop = 0;
     }
+    setPreviewShowBackTop(false);
   }, [selectedId]);
 
   const releaseScrollSourceAfterPaint = useCallback((source: "editor" | "preview") => {
@@ -1907,6 +1909,11 @@ export function MainWindow({
   }, [scheduleSyncedScroll, scrollSyncEnabled, viewMode]);
 
   const handlePreviewScroll = useCallback(() => {
+    const preview = previewScrollRef.current;
+    if (preview) {
+      // 超过一屏才浮现返回顶部按钮；React 对相同值不重渲染，滚动中开销可忽略
+      setPreviewShowBackTop(preview.scrollTop > preview.clientHeight);
+    }
     if (viewMode !== "split" || !scrollSyncEnabled || !scrollMaps.current) return;
     if (scrollSource.current === "editor") return;
 
@@ -1915,6 +1922,10 @@ export function MainWindow({
     scrollReleaseRafRef.current = 0;
     scheduleSyncedScroll("preview");
   }, [scheduleSyncedScroll, scrollSyncEnabled, viewMode]);
+
+  const scrollToPreviewTop = useCallback(() => {
+    previewScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   useEffect(() => cancelScheduledScrollSync, [cancelScheduledScrollSync]);
 
@@ -3016,7 +3027,7 @@ export function MainWindow({
                   )}
 
                   {(viewMode === "preview" || viewMode === "split") && (
-                    <div className="flex flex-col min-h-0 min-w-0 flex-1">
+                    <div className="relative flex flex-col min-h-0 min-w-0 flex-1">
                       {viewMode === "split" && (
                         <div className="px-4 pt-2.5 pb-1 shrink-0">
                           <span className="text-[10px] text-ink-ghost/60 font-mono tracking-widest uppercase">
@@ -3031,13 +3042,39 @@ export function MainWindow({
                           viewMode === "preview" ? "pt-3" : "pt-1"
                         }`}
                       >
-                        <MarkdownPreview
-                          content={deferredContent}
-                          fontSize={settingsConfig?.fontSize ?? 14}
-                          renderHtml={settingsConfig?.renderHtmlMarkdown ?? false}
-                          imageBaseDir={imageBaseDir ?? undefined}
-                        />
+                        {/* 限宽居中阅读排版；包裹层不破坏 scrollSync 以 .font-body 定位块级锚点 */}
+                        <div className="mx-auto max-w-[820px]">
+                          <MarkdownPreview
+                            content={deferredContent}
+                            fontSize={settingsConfig?.fontSize ?? 14}
+                            renderHtml={settingsConfig?.renderHtmlMarkdown ?? false}
+                            imageBaseDir={imageBaseDir ?? undefined}
+                          />
+                        </div>
                       </div>
+                      {previewShowBackTop && (
+                        <button
+                          type="button"
+                          onClick={scrollToPreviewTop}
+                          title={t("main.editor.backToTop", { defaultValue: "返回顶部" })}
+                          aria-label={t("main.editor.backToTop", { defaultValue: "返回顶部" })}
+                          className="absolute right-5 bottom-5 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-paper-deep/40 bg-paper/90 text-ink-soft shadow-md backdrop-blur transition hover:bg-paper-warm hover:text-ink"
+                        >
+                          <svg
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            className="h-4 w-4"
+                          >
+                            <path
+                              d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   )}
                 </>

@@ -94,7 +94,8 @@
       "undo": "Undo (Ctrl+Z)",
       "undoLabel": "Undo",
       "redo": "Redo (Ctrl+Y)",
-      "redoLabel": "Redo"
+      "redoLabel": "Redo",
+      "backToTop": "Back to top"
     },
     "externalFile": {
       "label": "External File · {{path}}"

@@ -94,7 +94,8 @@
       "undo": "撤销（Ctrl+Z）",
       "undoLabel": "撤销",
       "redo": "重做（Ctrl+Y）",
-      "redoLabel": "重做"
+      "redoLabel": "重做",
+      "backToTop": "返回顶部"
     },
     "externalFile": {
       "label": "外部文件 · {{path}}"
