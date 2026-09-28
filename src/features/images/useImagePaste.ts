@@ -181,12 +181,13 @@ export function useImagePaste({
   );
 
   const handlePaste = useCallback(
-    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      if (disabled) return;
+    (event: React.ClipboardEvent<HTMLTextAreaElement>): boolean => {
+      if (disabled) return false;
       const files = getImageFiles(event.clipboardData);
-      if (files.length === 0) return;
+      if (files.length === 0) return false;
       event.preventDefault();
       void processFiles(files);
+      return true;
     },
     [disabled, processFiles],
   );

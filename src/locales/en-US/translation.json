@@ -105,6 +105,18 @@
       "remove": "Remove from list",
       "title": "External Files"
     },
+    "find": {
+      "searchPlaceholder": "Find",
+      "replacePlaceholder": "Replace with",
+      "noMatch": "No match",
+      "caseSensitive": "Match case",
+      "prev": "Previous (Shift+Enter)",
+      "next": "Next (Enter)",
+      "toggleReplace": "Toggle replace",
+      "replace": "Replace",
+      "replaceAll": "Replace all",
+      "close": "Close (Esc)"
+    },
     "formatSample": {
       "boldText": "Bold text",
       "codeText": "Code",

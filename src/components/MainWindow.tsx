@@ -17,6 +17,7 @@ import { exportMarkdownNote, importMarkdownNote } from "../features/importExport
 import { MarkdownPreviewLazy as MarkdownPreview } from "../features/markdown/MarkdownPreviewLazy";
 import { showToast } from "./Toast";
 import { TocPanel } from "./TocPanel";
+import { FindBar } from "./FindBar";
 import {
   createScrollSyncMap,
   interpolateScrollOffset,
@@ -29,6 +30,7 @@ import { buildHrInsertion } from "../features/markdown/hrInsertion";
 import { listContinuation } from "../features/markdown/listContinuation";
 import { genericTextIndent, listTabIndent, listTabOutdent } from "../features/markdown/listIndent";
 import { autoPair } from "../features/markdown/autoPair";
+import { htmlToMarkdown } from "../features/markdown/htmlToMarkdown";
 import {
   chooseDataDirectory,
   getConfig,
@@ -428,6 +430,7 @@ export function MainWindow({
   const [splitRatio, setSplitRatio] = useState(0.5);
   const [isResizingSplit, setIsResizingSplit] = useState(false);
   const [previewShowBackTop, setPreviewShowBackTop] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const [categoryMenu, setCategoryMenu] = useState<CategoryMenuState | null>(null);
   const [categoryMenuClosing, setCategoryMenuClosing] = useState(false);
@@ -1956,6 +1959,11 @@ export function MainWindow({
 
       if (event.ctrlKey || event.metaKey) {
         if (event.altKey || event.shiftKey) return;
+        if (event.key === "f" || event.key === "F") {
+          event.preventDefault();
+          setFindOpen(true);
+          return;
+        }
         const action =
           event.key === "b" || event.key === "B"
             ? "bold"
@@ -2050,6 +2058,39 @@ export function MainWindow({
   const scrollToPreviewTop = useCallback(() => {
     previewScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
+
+  // 富文本粘贴转 Markdown：优先级 图片（useImagePaste）> text/html 转换 > 默认纯文本。
+  // 转换结果与剪贴板纯文本一致（如 VS Code 复制的代码）时交还默认行为，避免无谓改写
+  const handleHtmlPaste = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const html = event.clipboardData.getData("text/html");
+      if (!html) return;
+      let markdown: string;
+      try {
+        markdown = htmlToMarkdown(html);
+      } catch {
+        return;
+      }
+      const plain = event.clipboardData.getData("text/plain");
+      if (!markdown.trim() || (plain && markdown === plain.trim())) return;
+
+      const textarea = contentRef.current;
+      if (!textarea) return;
+      event.preventDefault();
+      const { selectionStart, selectionEnd, value } = textarea;
+      const nextValue = value.slice(0, selectionStart) + markdown + value.slice(selectionEnd);
+      textarea.focus();
+      textarea.setSelectionRange(0, value.length);
+      document.execCommand("insertText", false, nextValue);
+      setContent(nextValue);
+      markDirty();
+      requestAnimationFrame(() => {
+        const cursor = selectionStart + markdown.length;
+        textarea.setSelectionRange(cursor, cursor);
+      });
+    },
+    [setContent, markDirty],
+  );
 
   useEffect(() => cancelScheduledScrollSync, [cancelScheduledScrollSync]);
 
@@ -3102,6 +3143,19 @@ export function MainWindow({
                         ))}
                       </div>
 
+                      {findOpen && (
+                        <FindBar
+                          textareaRef={contentRef}
+                          value={content}
+                          onChange={setContent}
+                          onDirty={markDirty}
+                          onClose={() => {
+                            setFindOpen(false);
+                            contentRef.current?.focus();
+                          }}
+                        />
+                      )}
+
                       <div className="flex-1 overflow-hidden px-5 pb-4">
                         <textarea
                           ref={contentRef}
@@ -3111,7 +3165,10 @@ export function MainWindow({
                             setContent(event.target.value);
                             markDirty();
                           }}
-                          onPaste={imagePasteHandler}
+                          onPaste={(event) => {
+                            if (imagePasteHandler(event)) return;
+                            handleHtmlPaste(event);
+                          }}
                           onDrop={imageDropHandler}
                           onDragOver={imageDragOverHandler}
                           onScroll={handleEditorScroll}

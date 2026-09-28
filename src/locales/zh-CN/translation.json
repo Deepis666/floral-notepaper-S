@@ -105,6 +105,18 @@
       "remove": "从列表移除",
       "title": "外部文件"
     },
+    "find": {
+      "searchPlaceholder": "查找",
+      "replacePlaceholder": "替换为",
+      "noMatch": "无匹配",
+      "caseSensitive": "区分大小写",
+      "prev": "上一个（Shift+Enter）",
+      "next": "下一个（Enter）",
+      "toggleReplace": "展开替换",
+      "replace": "替换",
+      "replaceAll": "全部替换",
+      "close": "关闭（Esc）"
+    },
     "formatSample": {
       "boldText": "粗体文本",
       "codeText": "代码",

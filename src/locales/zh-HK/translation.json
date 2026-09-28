@@ -105,6 +105,18 @@
       "remove": "從清單移除",
       "title": "外部檔案"
     },
+    "find": {
+      "searchPlaceholder": "尋找",
+      "replacePlaceholder": "替換為",
+      "noMatch": "無匹配",
+      "caseSensitive": "區分大小寫",
+      "prev": "上一個（Shift+Enter）",
+      "next": "下一個（Enter）",
+      "toggleReplace": "展開替換",
+      "replace": "替換",
+      "replaceAll": "全部替換",
+      "close": "關閉（Esc）"
+    },
     "formatSample": {
       "boldText": "粗體文字",
       "codeText": "程式碼",
