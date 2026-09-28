@@ -59,6 +59,11 @@ All changes unique to this fork (since v1.2.1, rebased onto upstream v1.2.0):
 
 - **Data directory self-healing**: when the recorded data directory has been deleted or moved (leftover uninstall paths, manual moves, lost drive letters), the app falls back to a former location that still holds data or to the default directory and repairs the config, instead of crashing at startup
 
+### ✍️ Markdown Editing & Reading Experience
+
+- **Reading**: syntax-highlighted code blocks (colors follow the light/dark theme); a floating outline panel in the preview pane (click a heading to jump, current section highlighted while scrolling, collapsible, auto-hidden in narrow panes); click any image for a fullscreen viewer (pointer-anchored wheel zoom, drag to pan, double-click to reset); preview content is center-limited to a comfortable reading width, with a back-to-top button appearing after scrolling past one screen
+- **Editing** (main window): format shortcuts `Ctrl+B` / `Ctrl+I` / `Ctrl+K` / `` Ctrl+` ``; Enter smart-continues lists, task lists and blockquotes (Enter on an empty item exits); `Tab` / `Shift+Tab` list-aware indentation; with a selection, pressing `*` `~` `=` wraps it as emphasis/strikethrough/highlight fencing, and `` ` `` `[` `(` auto-close at the caret; rich text pasted from web pages is converted to Markdown automatically (headings, bold, links, tables, nested lists, etc.); `Ctrl+F` opens a find & replace bar (live search, cyclic navigation, match-case toggle, single/replace-all with single-step undo)
+
 ## Why Floral Notepaper
 
 Most note-taking or sticky note apps out there are either bloated and steep to learn, or dated and long abandoned. Floral Notepaper was built to be different — quick to summon, light to use, and a pleasure to look at.
