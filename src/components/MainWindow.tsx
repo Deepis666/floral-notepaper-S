@@ -3049,6 +3049,7 @@ export function MainWindow({
                             fontSize={settingsConfig?.fontSize ?? 14}
                             renderHtml={settingsConfig?.renderHtmlMarkdown ?? false}
                             imageBaseDir={imageBaseDir ?? undefined}
+                            enableLightbox
                           />
                         </div>
                       </div>

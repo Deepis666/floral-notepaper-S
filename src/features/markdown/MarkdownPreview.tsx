@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -16,6 +17,7 @@ import "katex/dist/katex.min.css";
 import remarkAlerts from "./remarkAlerts";
 import { resolveMarkdownImageSrc } from "./imageSrc";
 import { MermaidBlock, isMermaidLanguage, mermaidLanguageFromClass } from "./MermaidBlock";
+import { Lightbox } from "../../components/Lightbox";
 
 function CodeBlock({ children, language }: { children: React.ReactNode; language?: string }) {
   const { t } = useTranslation();
@@ -72,6 +74,8 @@ interface MarkdownPreviewProps {
   fontSize?: number;
   renderHtml?: boolean;
   imageBaseDir?: string;
+  /** 点击图片全屏查看；磁贴不启用以防误触 */
+  enableLightbox?: boolean;
 }
 
 // remarkBreaks 放在链尾：先由 remarkMath 抽出公式节点，再把段落内单个换行渲染为 <br>，
@@ -297,8 +301,10 @@ export function MarkdownPreview({
   fontSize = 14,
   renderHtml = false,
   imageBaseDir,
+  enableLightbox = false,
 }: MarkdownPreviewProps) {
   const { t } = useTranslation();
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const components = useMemo<Components>(
     () => ({
       ...staticComponents,
@@ -309,13 +315,14 @@ export function MarkdownPreview({
             src={resolvedSrc}
             alt={alt ?? ""}
             loading="lazy"
-            className="w-[50%] rounded my-2 mx-auto block"
+            className={`w-[50%] rounded my-2 mx-auto block ${enableLightbox ? "cursor-zoom-in" : ""}`}
+            onClick={enableLightbox ? () => setLightboxSrc(resolvedSrc) : undefined}
             {...props}
           />
         );
       },
     }),
-    [imageBaseDir],
+    [imageBaseDir, enableLightbox],
   );
   return (
     <div className="font-body markdown-selectable" style={{ fontSize: `${fontSize}px` }}>
@@ -332,6 +339,12 @@ export function MarkdownPreview({
           {t("markdown.emptyHint", { defaultValue: "预览区会显示当前笔记内容" })}
         </p>
       )}
+      {lightboxSrc &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />,
+          document.body,
+        )}
     </div>
   );
 }
