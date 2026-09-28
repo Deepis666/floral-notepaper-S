@@ -26,6 +26,7 @@ import {
   type ScrollSyncMap,
 } from "../features/markdown/scrollSync";
 import { buildHrInsertion } from "../features/markdown/hrInsertion";
+import { listContinuation } from "../features/markdown/listContinuation";
 import {
   chooseDataDirectory,
   getConfig,
@@ -133,6 +134,7 @@ type FormatAction =
   | "ol"
   | "code"
   | "quote"
+  | "link"
   | "inlineMath"
   | "blockMath"
   | "mermaid";
@@ -275,6 +277,17 @@ function applyFormat(
         cursorStart = start + 2;
         cursorEnd = cursorStart + (selected || fallback).length;
       }
+      break;
+    }
+    case "link": {
+      // 光标落在 URL 上便于直接输入地址；有选中文本时直接作为链接文本
+      const text =
+        selected || translate("main.formatSample.linkText", { defaultValue: "链接文本" });
+      const url = translate("main.formatSample.linkUrl", { defaultValue: "https://" });
+      const wrapped = `[${text}](${url})`;
+      result = before + wrapped + after;
+      cursorStart = start + text.length + 3;
+      cursorEnd = cursorStart + url.length;
       break;
     }
     case "inlineMath": {
@@ -512,6 +525,12 @@ export function MainWindow({
         title: t("main.toolbar.italic", { defaultValue: "斜体" }),
         style: "italic",
         action: "italic",
+      },
+      {
+        label: "🔗",
+        title: t("main.toolbar.link", { defaultValue: "链接（Ctrl+K）" }),
+        style: "text-[10px]",
+        action: "link",
       },
       {
         label: "H",
@@ -1924,6 +1943,58 @@ export function MainWindow({
     scheduleSyncedScroll("preview");
   }, [scheduleSyncedScroll, scrollSyncEnabled, viewMode]);
 
+  // 编辑区快捷键与智能续行：格式快捷键复用工具栏的 applyFormat（保留原生撤销栈），
+  // 回车续行仅在无选区时接管；IME 组合输入期间全部放行
+  const handleEditorKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.nativeEvent.isComposing) return;
+      const textarea = event.currentTarget;
+
+      if (event.ctrlKey || event.metaKey) {
+        if (event.altKey || event.shiftKey) return;
+        const action =
+          event.key === "b" || event.key === "B"
+            ? "bold"
+            : event.key === "i" || event.key === "I"
+              ? "italic"
+              : event.key === "k" || event.key === "K"
+                ? "link"
+                : event.key === "`"
+                  ? "code"
+                  : null;
+        if (!action) return;
+        event.preventDefault();
+        applyFormat(textarea, action, t, setContent, markDirty);
+        return;
+      }
+
+      if (event.key !== "Enter" || event.shiftKey || event.altKey) return;
+      const { selectionStart, selectionEnd } = textarea;
+      if (selectionStart !== selectionEnd) return;
+      const continuation = listContinuation(textarea.value, selectionStart);
+      if (!continuation) return;
+
+      event.preventDefault();
+      const { replaceStart, replaceEnd, insert } = continuation;
+      const result =
+        textarea.value.slice(0, replaceStart) + insert + textarea.value.slice(replaceEnd);
+      textarea.focus();
+      textarea.setSelectionRange(replaceStart, replaceEnd);
+      if (insert) {
+        document.execCommand("insertText", false, insert);
+      } else {
+        document.execCommand("delete");
+      }
+      setContent(result);
+      markDirty();
+      requestAnimationFrame(() => {
+        const cursor = replaceStart + insert.length;
+        textarea.setSelectionRange(cursor, cursor);
+      });
+    },
+    [t, setContent, markDirty],
+  );
+
   const scrollToPreviewTop = useCallback(() => {
     previewScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
@@ -2992,6 +3063,7 @@ export function MainWindow({
                           onDrop={imageDropHandler}
                           onDragOver={imageDragOverHandler}
                           onScroll={handleEditorScroll}
+                          onKeyDown={handleEditorKeyDown}
                           className="w-full h-full leading-[1.9] text-ink-soft font-body placeholder:text-ink-ghost/40"
                           style={{
                             fontSize: `${settingsConfig?.fontSize ?? 14}px`,

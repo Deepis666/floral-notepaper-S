@@ -110,6 +110,8 @@
       "codeText": "Code",
       "headingText": "Heading",
       "italicText": "Italic text",
+      "linkText": "Link text",
+      "linkUrl": "https://",
       "listItem": "List item",
       "mermaidText": "graph TD\n    A[Start] --> B[End]",
       "quoteText": "Blockquote"
@@ -150,6 +152,7 @@
       "hr": "Horizontal rule",
       "inlineMath": "Inline math",
       "italic": "Italic",
+      "link": "Link (Ctrl+K)",
       "mermaid": "Mermaid diagram",
       "ol": "Ordered list",
       "quote": "Blockquote",
