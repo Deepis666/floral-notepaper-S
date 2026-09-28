@@ -29,4 +29,29 @@ describe("MarkdownPreview", () => {
     expect(preCloseIndex).toBeGreaterThan(-1);
     expect(buttonIndex).toBeGreaterThan(preCloseIndex);
   });
+
+  test("highlights fenced code blocks with hljs token classes", () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownPreview content={"```js\nconst answer = 42;\n```"} />,
+    );
+
+    expect(markup).toContain("hljs-keyword");
+    expect(markup).toContain("hljs-number");
+  });
+
+  test("renders code blocks without a language as plain text", () => {
+    const markup = renderToStaticMarkup(<MarkdownPreview content={"```\nplain text\n```"} />);
+
+    expect(markup).not.toContain("hljs-keyword");
+    expect(markup).toContain("plain text");
+  });
+
+  test("renders mermaid blocks as source instead of highlighted code", () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownPreview content={"```mermaid\ngraph TD\n A-->B\n```"} />,
+    );
+
+    expect(markup).toContain("graph TD");
+    expect(markup).not.toContain("hljs-");
+  });
 });

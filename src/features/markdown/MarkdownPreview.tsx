@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
+import rehypeHighlight from "rehype-highlight";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Components } from "react-markdown";
@@ -92,10 +93,12 @@ const sanitizeSchema = {
     abbr: ["title"],
   },
 };
-const rehypePluginsDefault = [rehypeKatex, rehypeSlug];
+const rehypePluginsDefault = [rehypeKatex, rehypeSlug, rehypeHighlight];
 const rehypePluginsWithHtml = [
   rehypeRaw,
   [rehypeSanitize, sanitizeSchema],
+  // 高亮须在 sanitize 之后：hljs 的 token span 与类名不进入白名单，放前面会被清洗
+  rehypeHighlight,
   rehypeKatex,
   rehypeSlug,
 ] as Parameters<typeof Markdown>[0]["rehypePlugins"];
@@ -214,7 +217,8 @@ const staticComponents: Components = {
     <hr className="my-6 border-none h-px bg-gradient-to-r from-transparent via-paper-deep to-transparent" />
   ),
   code: ({ className, children }) => {
-    const isBlock = className?.startsWith("language-") || String(children).includes("\n");
+    // 高亮后块级 code 的类名形如 "hljs language-js"，须用 includes 而非 startsWith
+    const isBlock = className?.includes("language-") || String(children).includes("\n");
     if (isBlock) {
       return (
         <code className="text-[0.85em] font-mono text-ink-soft leading-[1.8] whitespace-pre">
