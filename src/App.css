@@ -755,6 +755,12 @@ input::placeholder {
 /* ── 代码块语法高亮（rehype-highlight / hljs）──
    色值与 GFM alerts 调色板同源；hljs 类只出现在 token span 上
    （自定义 code 组件以自身类名重建元素），背景由代码块容器的纸色承担 */
+
+/* 大纲点击定位时标题上方留出呼吸空间 */
+.markdown-selectable :is(h1, h2, h3, h4, h5, h6) {
+  scroll-margin-top: 16px;
+}
+
 .hljs-comment,
 .hljs-quote {
   color: var(--color-ink-faint);

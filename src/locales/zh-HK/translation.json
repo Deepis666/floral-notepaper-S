@@ -95,7 +95,8 @@
       "undoLabel": "還原",
       "redo": "重做（Ctrl+Y）",
       "redoLabel": "重做",
-      "backToTop": "返回頂部"
+      "backToTop": "返回頂部",
+      "outline": "大綱"
     },
     "externalFile": {
       "label": "外部檔案 · {{path}}"

@@ -16,6 +16,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { exportMarkdownNote, importMarkdownNote } from "../features/importExport/api";
 import { MarkdownPreviewLazy as MarkdownPreview } from "../features/markdown/MarkdownPreviewLazy";
 import { showToast } from "./Toast";
+import { TocPanel } from "./TocPanel";
 import {
   createScrollSyncMap,
   interpolateScrollOffset,
@@ -3076,6 +3077,7 @@ export function MainWindow({
                           </svg>
                         </button>
                       )}
+                      <TocPanel containerRef={previewScrollRef} />
                     </div>
                   )}
                 </>
